@@ -1,0 +1,6 @@
+{
+  "name": "ATELIER",
+  "description": "Professional online presence, curated portfolio, and structured commission platform for independent artists and creators.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
