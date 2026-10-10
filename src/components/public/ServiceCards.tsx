@@ -16,7 +16,8 @@ export const ServiceCards: React.FC<ServiceCardsProps> = ({
   onRequestCommissionGeneral,
 }) => {
   return (
-    <section id="services-section" className="py-20 bg-[#F4EFEA] border-t border-neutral-200/90">
+    <section id="services-section" className="py-20 bg-[#F4EFEA] border-t border-neutral-200/90 relative">
+      <div id="commissions-section" className="absolute -top-16 left-0" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-6">
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14 pb-5 border-b border-neutral-300/80">

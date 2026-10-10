@@ -11,10 +11,12 @@ import {
   Calendar, 
   MessageSquare, 
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  ExternalLink
 } from 'lucide-react';
 import { CommissionRequest, CommissionStatus } from '../../types/index.js';
 import { api } from '../../services/api.js';
+import { getSafeExternalUrl } from '../../lib/linkSanitizer.js';
 
 interface CommissionInboxProps {
   commissions: CommissionRequest[];
@@ -240,6 +242,33 @@ export const CommissionInbox: React.FC<CommissionInboxProps> = ({
                   {activeCommission.brief}
                 </p>
               </div>
+
+              {/* Reference Links & Moodboards */}
+              {activeCommission.referenceImages && activeCommission.referenceImages.length > 0 && (
+                <div>
+                  <span className="text-xs font-semibold text-neutral-700 uppercase tracking-wider block mb-1.5">
+                    Reference Links & Moodboards
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {activeCommission.referenceImages.map((refUrl, idx) => {
+                      const safeUrl = getSafeExternalUrl(refUrl);
+                      if (!safeUrl) return null;
+                      return (
+                        <a
+                          key={idx}
+                          href={safeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 rounded-xs text-xs text-neutral-800 transition-colors font-mono"
+                        >
+                          <ExternalLink className="w-3 h-3 text-neutral-500" />
+                          <span>Reference Asset #{idx + 1}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* AI-Enhanced Structured Brief if available */}
               {activeCommission.aiEnhancedBrief && (

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Sparkles, Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
 import { CommissionService, Creator } from '../../types/index.js';
 import { api } from '../../services/api.js';
+import { validateAndNormalizeUrl } from '../../lib/linkSanitizer.js';
 
 interface CommissionModalProps {
   isOpen: boolean;
@@ -86,22 +87,47 @@ export const CommissionModal: React.FC<CommissionModalProps> = ({
       return;
     }
 
+    if (brief.trim().length < 10) {
+      setErrorMessage('Please provide more detail in your project brief (at least 10 characters).');
+      return;
+    }
+
+    if (brief.trim().length > 3000) {
+      setErrorMessage('Brief is too long. Please keep within 3,000 characters.');
+      return;
+    }
+
+    if (Number(budget) > 10000000) {
+      setErrorMessage('Budget exceeds maximum allowed amount ($10,000,000).');
+      return;
+    }
+
+    let sanitizedRefUrl = '';
+    if (referenceUrl.trim()) {
+      const urlCheck = validateAndNormalizeUrl(referenceUrl.trim());
+      if (!urlCheck.valid) {
+        setErrorMessage(urlCheck.error || 'Please enter a valid reference URL with http:// or https://');
+        return;
+      }
+      sanitizedRefUrl = urlCheck.normalized || '';
+    }
+
     setIsSubmitting(true);
     try {
       await api.submitCommission({
         creatorId: creator.id,
         serviceId: selectedServiceId || null,
         serviceTitle: currentService?.title || 'Bespoke Custom Commission',
-        clientName: clientName.trim(),
-        clientEmail: clientEmail.trim(),
-        clientPhone: clientPhone.trim() || undefined,
-        brief: brief.trim(),
-        aiEnhancedBrief: aiSuggestions || undefined,
+        clientName: clientName.trim().slice(0, 100),
+        clientEmail: clientEmail.trim().slice(0, 255),
+        clientPhone: clientPhone.trim() ? clientPhone.trim().slice(0, 50) : undefined,
+        brief: brief.trim().slice(0, 3000),
+        aiEnhancedBrief: aiSuggestions ? aiSuggestions.slice(0, 5000) : undefined,
         budget: Number(budget) || 0,
         currency: currentService?.currency || 'USD',
-        deadline: deadline || undefined,
-        intendedUse: intendedUse.trim() || undefined,
-        referenceImages: referenceUrl ? [referenceUrl] : [],
+        deadline: deadline ? deadline.slice(0, 100) : undefined,
+        intendedUse: intendedUse.trim() ? intendedUse.trim().slice(0, 500) : undefined,
+        referenceImages: sanitizedRefUrl ? [sanitizedRefUrl] : [],
       });
 
       setSubmitSuccess(true);
@@ -204,6 +230,7 @@ export const CommissionModal: React.FC<CommissionModalProps> = ({
                 <input
                   type="text"
                   required
+                  maxLength={100}
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
                   placeholder="e.g. Julian Vance"
@@ -218,6 +245,7 @@ export const CommissionModal: React.FC<CommissionModalProps> = ({
                 <input
                   type="email"
                   required
+                  maxLength={255}
                   value={clientEmail}
                   onChange={(e) => setClientEmail(e.target.value)}
                   placeholder="julian@example.com"
@@ -251,11 +279,18 @@ export const CommissionModal: React.FC<CommissionModalProps> = ({
               <textarea
                 required
                 rows={4}
+                maxLength={3000}
                 value={brief}
                 onChange={(e) => setBrief(e.target.value)}
                 placeholder="Describe your desired piece, placement, scale, tactile preferences, or intended atmosphere..."
                 className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-xs focus:outline-none focus:border-neutral-900 leading-relaxed font-sans"
               />
+              <div className="flex justify-between items-center text-[10px] text-neutral-400 mt-1">
+                <span>Minimum 10 characters</span>
+                <span className={brief.length > 2800 ? 'text-amber-700 font-semibold' : ''}>
+                  {brief.length} / 3000 characters
+                </span>
+              </div>
 
               {/* AI Suggestion Preview Box if generated */}
               {aiSuggestions && (
@@ -289,6 +324,7 @@ export const CommissionModal: React.FC<CommissionModalProps> = ({
                 <input
                   type="number"
                   min="0"
+                  max="10000000"
                   step="50"
                   value={budget}
                   onChange={(e) => setBudget(Number(e.target.value))}
@@ -316,6 +352,7 @@ export const CommissionModal: React.FC<CommissionModalProps> = ({
               </label>
               <input
                 type="text"
+                maxLength={500}
                 value={intendedUse}
                 onChange={(e) => setIntendedUse(e.target.value)}
                 placeholder="e.g. Private residence dining room, hospitality interior, collection installation"
@@ -330,6 +367,7 @@ export const CommissionModal: React.FC<CommissionModalProps> = ({
               </label>
               <input
                 type="url"
+                maxLength={1000}
                 value={referenceUrl}
                 onChange={(e) => setReferenceUrl(e.target.value)}
                 placeholder="https://arena.na/... or cloud drive image link"

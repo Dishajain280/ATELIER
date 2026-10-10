@@ -18,12 +18,14 @@ import {
 } from 'lucide-react';
 import { Creator } from '../../types/index.js';
 import { api } from '../../services/api.js';
+import { validateAndNormalizeUrl } from '../../lib/linkSanitizer.js';
 
 interface OnboardingModalProps {
   isOpen: boolean;
   onClose: () => void;
   existingCreators: Creator[];
   onComplete: (newCreator: Creator) => void;
+  initialHandle?: string;
 }
 
 const RESERVED_WORDS = [
@@ -45,6 +47,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   onClose,
   existingCreators,
   onComplete,
+  initialHandle,
 }) => {
   const [step, setStep] = useState<number>(1);
   const totalSteps = 8;
@@ -75,7 +78,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       setStep(1);
       setEmail('');
       setPassword('');
-      setHandle('');
+      const cleanInitial = (initialHandle || '').toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+      setHandle(cleanInitial);
       setName('');
       setBio('');
       setAvatarUrl(PRESET_AVATARS[0]);
@@ -88,8 +92,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       setHandleError(null);
       setErrorMsg(null);
       setSuccessState(false);
+      if (cleanInitial) {
+        validateHandle(cleanInitial);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialHandle]);
 
   if (!isOpen) return null;
 
@@ -126,7 +133,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         return;
       }
       const clean = handle.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
-      if (RESERVED_WORDS.includes(clean) || existingCreators.some(c => c.handle.toLowerCase() === clean)) {
+      if (!validateHandle(clean)) {
         return;
       }
     } else if (step === 3) {
@@ -153,15 +160,27 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     setErrorMsg(null);
     try {
       const cleanHandle = handle.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+
+      let sanitizedWebsite: string | undefined = undefined;
+      if (socialWebsite.trim()) {
+        const webCheck = validateAndNormalizeUrl(socialWebsite.trim());
+        if (!webCheck.valid) {
+          setErrorMsg(webCheck.error || 'Invalid Website URL format.');
+          setIsSubmitting(false);
+          return;
+        }
+        sanitizedWebsite = webCheck.normalized;
+      }
+
       const newCreator = await api.createCreator({
-        name: name.trim(),
+        name: name.trim().slice(0, 100),
         handle: cleanHandle,
-        bio: bio.trim(),
+        bio: bio.trim().slice(0, 1000),
         avatarUrl,
         socialLinks: {
-          instagram: socialInstagram ? `@${socialInstagram.replace(/^@/, '')}` : undefined,
-          twitter: socialTwitter ? `@${socialTwitter.replace(/^@/, '')}` : undefined,
-          website: socialWebsite ? socialWebsite : undefined,
+          instagram: socialInstagram ? `@${socialInstagram.replace(/^@/, '')}`.slice(0, 100) : undefined,
+          twitter: socialTwitter ? `@${socialTwitter.replace(/^@/, '')}`.slice(0, 100) : undefined,
+          website: sanitizedWebsite,
         },
         themeSettings: {
           accentColor,
@@ -249,6 +268,18 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       Enter your credentials to secure your studio account and access commission inquiries.
                     </p>
                   </div>
+
+                  {handle && !handleError && (
+                    <div className="p-3 bg-amber-50/90 border border-amber-300/80 rounded-xs flex items-center justify-between text-xs font-mono text-amber-900">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>Reserving studio handle: <strong>atelier.app/@{handle}</strong></span>
+                      </div>
+                      <span className="text-[10px] uppercase font-sans font-semibold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-xs">
+                        Available
+                      </span>
+                    </div>
+                  )}
 
                   <div className="space-y-4 pt-2">
                     <div>

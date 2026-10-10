@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Folder, Check, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Folder, Check, X, Lock } from 'lucide-react';
 import { Collection } from '../../types/index.js';
 import { api } from '../../services/api.js';
 
@@ -21,6 +21,8 @@ export const CollectionManager: React.FC<CollectionManagerProps> = ({
   const [description, setDescription] = useState('');
   const [order, setOrder] = useState<number>(1);
   const [visibility, setVisibility] = useState<Collection['visibility']>('public');
+  const [isPasswordProtected, setIsPasswordProtected] = useState(false);
+  const [password, setPassword] = useState('');
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -30,6 +32,8 @@ export const CollectionManager: React.FC<CollectionManagerProps> = ({
     setDescription('');
     setOrder(collections.length + 1);
     setVisibility('public');
+    setIsPasswordProtected(false);
+    setPassword('');
     setIsCreating(false);
     setEditingId(null);
     setErrorMessage(null);
@@ -41,6 +45,8 @@ export const CollectionManager: React.FC<CollectionManagerProps> = ({
     setDescription(col.description || '');
     setOrder(col.order);
     setVisibility(col.visibility);
+    setIsPasswordProtected(col.isPasswordProtected || false);
+    setPassword(col.password || '');
     setIsCreating(false);
     setErrorMessage(null);
   };
@@ -50,21 +56,47 @@ export const CollectionManager: React.FC<CollectionManagerProps> = ({
     if (!title.trim()) return;
     setErrorMessage(null);
 
+    if (title.trim().length > 120) {
+      setErrorMessage('Series title cannot exceed 120 characters.');
+      return;
+    }
+
+    if (description.trim().length > 1000) {
+      setErrorMessage('Series description cannot exceed 1,000 characters.');
+      return;
+    }
+
+    if (isPasswordProtected && !password.trim()) {
+      setErrorMessage('Please enter a collector access password.');
+      return;
+    }
+
+    const orderNum = Number(order);
+    if (orderNum < 0 || orderNum > 10000) {
+      setErrorMessage('Display order must be between 0 and 10,000.');
+      return;
+    }
+
     try {
       if (editingId) {
         await api.updateCollection(editingId, {
-          title: title.trim(),
-          description: description.trim() || undefined,
-          order: Number(order),
+          title: title.trim().slice(0, 120),
+          description: description.trim() ? description.trim().slice(0, 1000) : undefined,
+          order: orderNum,
           visibility,
+          isPasswordProtected,
+          password: isPasswordProtected ? password.trim() : undefined,
         });
       } else {
         await api.createCollection({
           creatorId,
-          title: title.trim(),
-          description: description.trim() || undefined,
-          order: Number(order),
-        });
+          title: title.trim().slice(0, 120),
+          description: description.trim() ? description.trim().slice(0, 1000) : undefined,
+          order: orderNum,
+          visibility,
+          isPasswordProtected,
+          password: isPasswordProtected ? password.trim() : undefined,
+        } as any);
       }
       resetForm();
       onRefresh();
@@ -100,10 +132,10 @@ export const CollectionManager: React.FC<CollectionManagerProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-200">
         <div>
           <h2 className="font-editorial text-2xl font-normal text-neutral-900">
-            Curated Collections & Series
+            Curated Collections & VIP Private Galleries
           </h2>
           <p className="text-xs text-neutral-500 mt-0.5">
-            Group your works into thematic series, seasonal kiln firings, or exhibition suites.
+            Group your works into thematic series or lock exclusive exhibitions behind secure collector passwords.
           </p>
         </div>
 
@@ -145,9 +177,10 @@ export const CollectionManager: React.FC<CollectionManagerProps> = ({
               <input
                 type="text"
                 required
+                maxLength={120}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Earth & Ash 2026"
+                placeholder="e.g. Earth & Ash 2026 (VIP Collector Preview)"
                 className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-xs focus:outline-none focus:border-neutral-900 font-editorial text-base"
               />
             </div>
@@ -158,6 +191,8 @@ export const CollectionManager: React.FC<CollectionManagerProps> = ({
               </label>
               <input
                 type="number"
+                min={0}
+                max={10000}
                 value={order}
                 onChange={(e) => setOrder(Number(e.target.value))}
                 className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-xs focus:outline-none focus:border-neutral-900 font-mono"
@@ -171,11 +206,48 @@ export const CollectionManager: React.FC<CollectionManagerProps> = ({
             </label>
             <textarea
               rows={2}
+              maxLength={1000}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe the research question, kiln firing, or thematic context of this series..."
               className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-xs focus:outline-none focus:border-neutral-900 leading-relaxed"
             />
+          </div>
+
+          {/* Password Protection for Private VIP Galleries */}
+          <div className="bg-neutral-50 border border-neutral-200 p-4 rounded-xs space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="password-protect-check"
+                checked={isPasswordProtected}
+                onChange={(e) => setIsPasswordProtected(e.target.checked)}
+                className="rounded-xs border-neutral-300 text-neutral-900 focus:ring-0"
+              />
+              <label htmlFor="password-protect-check" className="text-xs font-semibold text-neutral-900 cursor-pointer flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-amber-700" />
+                <span>Password-Protect Private Gallery (e.g. VIP Collector Preview)</span>
+              </label>
+            </div>
+
+            {isPasswordProtected && (
+              <div className="pl-5 pt-1">
+                <label className="block text-[11px] font-medium text-neutral-600 uppercase tracking-wider mb-1">
+                  Secure Collector Password *
+                </label>
+                <input
+                  type="text"
+                  required={isPasswordProtected}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="e.g. collector2026"
+                  className="w-full sm:w-72 px-3 py-2 text-xs bg-white border border-neutral-300 rounded-xs focus:outline-none focus:border-neutral-900 font-mono"
+                />
+                <p className="text-[11px] text-neutral-500 mt-1">
+                  Visitors must enter this passcode to view artworks in this collection.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-2">
@@ -206,57 +278,49 @@ export const CollectionManager: React.FC<CollectionManagerProps> = ({
             <div>
               <div className="flex items-center justify-between text-xs text-neutral-400 font-mono mb-2">
                 <span>ORDER 0{col.order}</span>
-                <span className="capitalize">{col.visibility}</span>
+                <div className="flex items-center gap-2">
+                  {col.isPasswordProtected && (
+                    <span className="inline-flex items-center gap-1 text-amber-800 bg-amber-50 px-2 py-0.5 rounded-xs border border-amber-200">
+                      <Lock className="w-3 h-3" />
+                      <span>Protected</span>
+                    </span>
+                  )}
+                  <span className="capitalize">{col.visibility}</span>
+                </div>
               </div>
 
-              <h3 className="font-editorial text-2xl font-normal text-neutral-900 mb-2">
+              <h3 className="font-editorial text-xl font-normal text-neutral-900 mb-1">
                 {col.title}
               </h3>
-
-              {col.description && (
-                <p className="text-xs text-neutral-600 font-light leading-relaxed mb-4">
-                  {col.description}
-                </p>
-              )}
+              <p className="text-xs text-neutral-600 line-clamp-2 leading-relaxed mb-4">
+                {col.description || 'No conceptual statement provided.'}
+              </p>
             </div>
 
-            <div className="pt-4 border-t border-neutral-100 flex items-center justify-between text-xs">
-              <span className="text-neutral-500 font-mono text-[11px]">
+            <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+              <span className="text-xs text-neutral-500 font-mono">
                 {col.artworkCount || 0} Artworks Catalogued
               </span>
 
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleStartEdit(col)}
-                  className="p-1.5 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-xs transition-colors"
-                  title="Edit Series"
+                  className="px-3 py-1.5 border border-neutral-300 hover:border-neutral-900 text-neutral-800 text-xs font-medium rounded-xs transition-colors inline-flex items-center gap-1"
                 >
-                  <Edit2 className="w-3.5 h-3.5" />
+                  <Edit2 className="w-3 h-3" />
+                  <span>Edit</span>
                 </button>
-                {confirmDeleteId === col.id ? (
-                  <div className="flex items-center gap-1 animate-fadeIn">
-                    <button
-                      onClick={() => handleDelete(col.id)}
-                      className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white rounded-xs transition-colors"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      onClick={() => setConfirmDeleteId(null)}
-                      className="px-1.5 py-1 text-[11px] text-neutral-500 hover:text-neutral-900 rounded-xs"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => handleDelete(col.id)}
-                    className="p-1.5 text-neutral-400 hover:text-red-700 hover:bg-red-50 rounded-xs transition-colors"
-                    title="Delete Series"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                <button
+                  onClick={() => handleDelete(col.id)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-xs transition-colors inline-flex items-center gap-1 ${
+                    confirmDeleteId === col.id
+                      ? 'bg-red-600 text-white'
+                      : 'border border-neutral-300 hover:border-red-600 text-neutral-700 hover:text-red-600'
+                  }`}
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>{confirmDeleteId === col.id ? 'Confirm?' : 'Delete'}</span>
+                </button>
               </div>
             </div>
           </div>

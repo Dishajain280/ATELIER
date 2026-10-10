@@ -19,7 +19,8 @@ export const SEED_CREATORS: Creator[] = [
     themeSettings: {
       accentColor: '#B45309', // Warm amber / terracotta
       typography: 'editorial',
-      gridStyle: 'masonry'
+      gridStyle: 'masonry',
+      palette: 'warm_paper'
     },
     acceptingCommissions: true,
     commissionNotice: 'Currently accepting 2 bespoke commissions for Autumn delivery.',
@@ -43,7 +44,8 @@ export const SEED_CREATORS: Creator[] = [
     themeSettings: {
       accentColor: '#475569',
       typography: 'editorial',
-      gridStyle: 'bento'
+      gridStyle: 'bento',
+      palette: 'obsidian'
     },
     acceptingCommissions: true,
     commissionNotice: 'Open for architectural-scale private residence commissions.',
@@ -66,7 +68,8 @@ export const SEED_CREATORS: Creator[] = [
     themeSettings: {
       accentColor: '#3F3F46',
       typography: 'sans',
-      gridStyle: 'minimal'
+      gridStyle: 'minimal',
+      palette: 'ivory'
     },
     acceptingCommissions: false,
     commissionNotice: 'Waitlist open for Q1 2027 installations.',

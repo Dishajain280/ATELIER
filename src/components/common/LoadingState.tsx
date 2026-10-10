@@ -1,5 +1,4 @@
 import React from 'react';
-import { Skeleton } from '../ui/Skeleton.js';
 
 interface LoadingStateProps {
   type?: 'card' | 'grid' | 'full';
@@ -22,18 +21,18 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12 space-y-8">
+    <div className="max-w-7xl mx-auto px-6 py-12 space-y-8 animate-pulse">
       <div className="space-y-2">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-8 w-64" />
+        <div className="h-4 w-32 bg-neutral-200/80 rounded-xs" />
+        <div className="h-8 w-64 bg-neutral-200/80 rounded-xs" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {[1, 2, 3].map((i) => (
           <div key={i} className="space-y-4">
-            <Skeleton className="aspect-[4/3] w-full" />
-            <Skeleton className="h-5 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
+            <div className="aspect-[4/3] w-full bg-neutral-200/80 rounded-xs" />
+            <div className="h-5 w-3/4 bg-neutral-200/80 rounded-xs" />
+            <div className="h-3 w-1/2 bg-neutral-200/80 rounded-xs" />
           </div>
         ))}
       </div>

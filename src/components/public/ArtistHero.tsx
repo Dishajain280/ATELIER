@@ -12,6 +12,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Creator } from '../../types/index.js';
+import { getSafeExternalUrl, formatInstagramUrl } from '../../lib/linkSanitizer.js';
 
 interface ArtistHeroProps {
   creator: Creator;
@@ -19,6 +20,7 @@ interface ArtistHeroProps {
   collectionCount: number;
   onRequestCommission: () => void;
   onScrollToGallery: () => void;
+  heroStyle?: 'immersive' | 'typographic' | 'asymmetrical';
 }
 
 export const ArtistHero: React.FC<ArtistHeroProps> = ({
@@ -27,6 +29,7 @@ export const ArtistHero: React.FC<ArtistHeroProps> = ({
   collectionCount,
   onRequestCommission,
   onScrollToGallery,
+  heroStyle = 'immersive',
 }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -45,6 +48,140 @@ export const ArtistHero: React.FC<ArtistHeroProps> = ({
     }
   };
 
+  // Render different hero layouts based on heroStyle
+  if (heroStyle === 'typographic') {
+    return (
+      <section className="pt-16 pb-20 border-b border-neutral-200/80 bg-[#FAF9F6] relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 relative z-10 space-y-8">
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <span className="font-mono font-semibold text-neutral-900 bg-neutral-900 text-white px-3 py-1 rounded-xs tracking-widest uppercase">
+              @{creator.handle}
+            </span>
+            {creator.location && (
+              <span className="text-neutral-500 inline-flex items-center gap-1 font-medium">
+                <MapPin className="w-3 h-3 text-neutral-400" />
+                {creator.location}
+              </span>
+            )}
+            {creator.acceptingCommissions && (
+              <span className="bg-amber-100 text-amber-900 font-medium px-2.5 py-0.5 rounded-xs text-[11px]">
+                Accepting Commissions
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-4 max-w-5xl">
+            <h1 className="font-editorial text-6xl sm:text-7xl lg:text-9xl font-normal text-neutral-950 tracking-tighter leading-[0.95]">
+              {creator.name}
+            </h1>
+            <div className="flex flex-wrap items-center gap-2 text-base text-neutral-600 font-light tracking-wide pt-2">
+              {creator.disciplines.map((d, i) => (
+                <span key={d}>
+                  {d}{i < creator.disciplines.length - 1 ? ' ·' : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-4 items-end">
+            <div className="md:col-span-8 space-y-4">
+              <blockquote className="text-xl md:text-2xl font-editorial italic text-neutral-900 leading-relaxed border-l-2 border-neutral-900 pl-4">
+                "{creator.statement || creator.bio}"
+              </blockquote>
+              <p className="text-sm text-neutral-600 font-light max-w-2xl leading-relaxed">
+                {creator.bio}
+              </p>
+            </div>
+            <div className="md:col-span-4 flex flex-wrap items-center gap-3 justify-start md:justify-end">
+              <button
+                onClick={onRequestCommission}
+                className="px-6 py-3.5 bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-semibold uppercase tracking-wider rounded-xs transition-all cursor-pointer"
+              >
+                Commission Me
+              </button>
+              <button
+                onClick={onScrollToGallery}
+                className="px-5 py-3.5 bg-white border border-neutral-300 text-neutral-800 text-xs font-medium uppercase tracking-wider hover:bg-neutral-50 rounded-xs inline-flex items-center gap-2 cursor-pointer"
+              >
+                <span>Works ({artworkCount})</span>
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (heroStyle === 'asymmetrical') {
+    return (
+      <section className="py-16 border-b border-neutral-200/80 bg-[#FAF9F6] relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-5 space-y-6">
+              <div className="aspect-[4/5] overflow-hidden rounded-xs border border-neutral-300 shadow-md">
+                <img
+                  src={creator.avatarUrl}
+                  alt={creator.name}
+                  className="w-full h-full object-cover object-center"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 space-y-6">
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <span className="font-mono text-neutral-900 bg-neutral-200/80 px-3 py-1 rounded-xs tracking-wider">
+                  @{creator.handle}
+                </span>
+                {creator.location && (
+                  <span className="text-neutral-500 inline-flex items-center gap-1 font-medium">
+                    <MapPin className="w-3 h-3 text-neutral-400" />
+                    {creator.location}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <h1 className="font-editorial text-5xl sm:text-6xl font-normal text-neutral-950 tracking-tight">
+                  {creator.name}
+                </h1>
+                <div className="text-sm text-neutral-600 font-medium">
+                  {creator.disciplines.join(' · ')}
+                </div>
+              </div>
+
+              <blockquote className="text-lg font-editorial italic text-neutral-900 leading-relaxed border-l-2 border-neutral-400 pl-4">
+                "{creator.statement || creator.bio}"
+              </blockquote>
+
+              <p className="text-sm text-neutral-600 font-light leading-relaxed">
+                {creator.bio}
+              </p>
+
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={onRequestCommission}
+                  className="px-6 py-3 bg-neutral-950 text-white text-xs font-semibold uppercase tracking-wider rounded-xs hover:bg-neutral-800 transition-colors cursor-pointer"
+                >
+                  Commission Artist
+                </button>
+                <button
+                  onClick={onScrollToGallery}
+                  className="px-5 py-3 bg-white border border-neutral-300 text-neutral-800 text-xs font-medium uppercase tracking-wider hover:bg-neutral-50 rounded-xs inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <span>Explore Gallery ({artworkCount})</span>
+                  <ArrowDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Default: Immersive Hero Banner
   return (
     <section className="pt-10 pb-18 border-b border-neutral-200/80 bg-[#FAF9F6] relative overflow-hidden">
       {/* Subtle organic texture wash */}
@@ -181,31 +318,39 @@ export const ArtistHero: React.FC<ArtistHeroProps> = ({
 
               {/* Social icons */}
               <div className="flex items-center gap-2 pl-1 text-neutral-500">
-                {creator.socialLinks.instagram && (
-                  <a
-                    href={creator.socialLinks.instagram}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-2.5 hover:text-neutral-900 transition-colors"
-                    title="Instagram"
-                  >
-                    <Instagram className="w-4 h-4" />
-                  </a>
-                )}
-                {creator.socialLinks.website && (
-                  <a
-                    href={creator.socialLinks.website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-2.5 hover:text-neutral-900 transition-colors"
-                    title="Website"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                )}
+                {(() => {
+                  const safeInsta = formatInstagramUrl(creator.socialLinks.instagram);
+                  return safeInsta ? (
+                    <a
+                      href={safeInsta}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2.5 hover:text-neutral-900 transition-colors"
+                      title="Instagram"
+                    >
+                      <Instagram className="w-4 h-4" />
+                    </a>
+                  ) : null;
+                })()}
+
+                {(() => {
+                  const safeWeb = getSafeExternalUrl(creator.socialLinks.website);
+                  return safeWeb ? (
+                    <a
+                      href={safeWeb}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2.5 hover:text-neutral-900 transition-colors"
+                      title="Website"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  ) : null;
+                })()}
+
                 {creator.socialLinks.email && (
                   <a
-                    href={`mailto:${creator.socialLinks.email}`}
+                    href={`mailto:${creator.socialLinks.email.replace(/[^\w@.-]/g, '')}`}
                     className="p-2.5 hover:text-neutral-900 transition-colors"
                     title="Email Studio"
                   >

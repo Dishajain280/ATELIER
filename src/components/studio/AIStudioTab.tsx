@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Creator, Artwork } from '../../types/index.js';
 import { api } from '../../services/api.js';
+import { validateImageFile, processAndOptimizeImage } from '../../lib/imageProtection.js';
 
 interface AIStudioTabProps {
   creator: Creator;
@@ -114,16 +115,29 @@ export const AIStudioTab: React.FC<AIStudioTabProps> = ({
   // ─────────────────────────────────────────────────────────────
   // HANDLERS — TOOL 1: ARTWORK ASSISTANT
   // ─────────────────────────────────────────────────────────────
-  const handleT1FileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleT1FileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setT1Image(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+
+    setT1Error('');
+    const validation = validateImageFile(file, 15 * 1024 * 1024);
+    if (!validation.valid) {
+      setT1Error(validation.error || 'Invalid image file.');
+      return;
+    }
+
+    try {
+      const optimized = await processAndOptimizeImage(file, {
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.85,
+      });
+      setT1Image(optimized);
+    } catch (err: any) {
+      setT1Error(err.message || 'Failed to process image');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleGenerateArtworkMetadata = async () => {

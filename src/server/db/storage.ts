@@ -89,7 +89,16 @@ class StorageEngine {
     bio: string;
     avatarUrl: string;
     socialLinks?: { instagram?: string; twitter?: string; website?: string };
-    themeSettings?: { accentColor?: string; typography?: 'editorial' | 'sans' | 'classic'; gridStyle?: 'masonry' | 'bento' | 'minimal' };
+    themeSettings?: { 
+      accentColor?: string; 
+      typography?: 'editorial' | 'sans' | 'classic'; 
+      gridStyle?: 'editorial' | 'bento' | 'masonry' | 'minimal'; 
+      palette?: 'obsidian' | 'warm_paper' | 'brutalism' | 'ivory';
+      watermarkEnabled?: boolean;
+      ambientSoundscape?: 'none' | 'vinyl' | 'rain' | 'waves' | 'studio';
+      heroStyle?: 'immersive' | 'typographic' | 'asymmetrical';
+      sectionOrder?: string[];
+    };
   }): Creator {
     const cleanHandle = data.handle.toLowerCase().replace(/[^a-z0-9_]/g, '');
     if (this.getCreatorByHandle(cleanHandle)) {
@@ -110,7 +119,12 @@ class StorageEngine {
       themeSettings: {
         accentColor: data.themeSettings?.accentColor || '#92400e',
         typography: data.themeSettings?.typography || 'editorial',
-        gridStyle: data.themeSettings?.gridStyle || 'bento'
+        gridStyle: data.themeSettings?.gridStyle || 'bento',
+        palette: data.themeSettings?.palette || 'obsidian',
+        watermarkEnabled: data.themeSettings?.watermarkEnabled ?? false,
+        ambientSoundscape: data.themeSettings?.ambientSoundscape || 'none',
+        heroStyle: data.themeSettings?.heroStyle || 'immersive',
+        sectionOrder: data.themeSettings?.sectionOrder || ['hero', 'gallery', 'services', 'statement'],
       },
       acceptingCommissions: true,
       commissionNotice: 'Currently accepting commission inquiries for new works.',

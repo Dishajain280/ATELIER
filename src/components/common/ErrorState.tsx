@@ -1,6 +1,5 @@
 import React from 'react';
 import { AlertCircle, RotateCcw } from 'lucide-react';
-import { Button } from '../ui/Button.js';
 
 interface ErrorStateProps {
   title?: string;
@@ -25,10 +24,13 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
         </p>
         {onRetry && (
           <div className="pt-2">
-            <Button variant="outline" size="sm" onClick={onRetry}>
-              <RotateCcw className="w-3.5 h-3.5 mr-1" />
+            <button
+              onClick={onRetry}
+              className="inline-flex items-center gap-1.5 px-4 py-2 border border-neutral-300 hover:bg-neutral-50 text-neutral-800 text-xs font-medium uppercase tracking-wider rounded-xs transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
               <span>Retry Operation</span>
-            </Button>
+            </button>
           </div>
         )}
       </div>

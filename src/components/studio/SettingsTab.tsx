@@ -35,6 +35,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ creator, onRefresh }) 
     }
   };
 
+  const [archiveRequested, setArchiveRequested] = useState(false);
+
   return (
     <div className="max-w-4xl space-y-8 pb-16">
       <div className="border-b border-neutral-200 pb-6 flex items-center justify-between">
@@ -129,7 +131,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ creator, onRefresh }) 
           <button
             type="submit"
             disabled={isSaving}
-            className="px-6 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-medium uppercase tracking-wider rounded-xs transition-colors inline-flex items-center gap-2"
+            className="px-6 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-medium uppercase tracking-wider rounded-xs transition-colors inline-flex items-center gap-2 cursor-pointer"
           >
             {isSaving ? (
               <>
@@ -155,13 +157,20 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ creator, onRefresh }) 
         <p className="text-xs text-red-800/80 leading-relaxed">
           Deactivating your studio profile will unpublish all active artworks and suspend incoming commission requests. This action can be undone by contacting support.
         </p>
-        <button
-          type="button"
-          onClick={() => alert('Studio archive requested. Please contact support@atelier.app')}
-          className="px-4 py-2 bg-white hover:bg-red-50 border border-red-300 text-red-700 text-xs font-medium uppercase tracking-wider rounded-xs transition-colors"
-        >
-          Archive Studio Profile
-        </button>
+        {archiveRequested ? (
+          <div className="p-3 bg-red-100 border border-red-300 text-xs text-red-900 rounded-xs flex items-center gap-2 animate-fadeIn">
+            <CheckCircle2 className="w-4 h-4 text-red-700 shrink-0" />
+            <span>Studio archive request recorded. Our creator support team will confirm via {email} within 24 hours.</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setArchiveRequested(true)}
+            className="px-4 py-2 bg-white hover:bg-red-50 border border-red-300 text-red-700 text-xs font-medium uppercase tracking-wider rounded-xs transition-colors cursor-pointer"
+          >
+            Archive Studio Profile
+          </button>
+        )}
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Creator, CommissionRequest } from '../../types/index.js';
 
-export type StudioTabType = 'overview' | 'portfolio' | 'artworks' | 'collections' | 'commissions' | 'inbox' | 'services' | 'ai-studio' | 'settings';
+export type StudioTabType = 'overview' | 'portfolio' | 'artworks' | 'collections' | 'commissions' | 'inbox' | 'services' | 'ai-studio' | 'settings' | 'orders' | 'analytics';
 
 interface StudioLayoutProps {
   creator: Creator;
@@ -62,18 +62,18 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 
           <button
             onClick={onViewPublicProfile}
-            className="px-4 py-2 border border-neutral-300 hover:bg-neutral-50 text-neutral-800 text-xs font-medium uppercase tracking-wider rounded-xs transition-colors inline-flex items-center gap-2 self-start sm:self-auto"
+            className="px-4 py-2 border border-neutral-300 hover:bg-neutral-50 text-neutral-800 text-xs font-medium uppercase tracking-wider rounded-xs transition-colors inline-flex items-center gap-2 self-start sm:self-auto cursor-pointer"
           >
             <span>Preview Public Link (/@{creator.handle})</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Studio Sub-Navigation Tabs (All 7 requested navigation items) */}
+        {/* Studio Sub-Navigation Tabs */}
         <div className="max-w-7xl mx-auto px-6 flex items-center gap-6 text-xs font-medium overflow-x-auto">
           <button
             onClick={() => onTabChange('overview')}
-            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'overview'
                 ? 'border-neutral-900 text-neutral-950 font-semibold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
@@ -85,7 +85,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 
           <button
             onClick={() => onTabChange('portfolio')}
-            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'portfolio'
                 ? 'border-neutral-900 text-neutral-950 font-semibold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
@@ -97,7 +97,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 
           <button
             onClick={() => onTabChange('artworks')}
-            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'artworks'
                 ? 'border-neutral-900 text-neutral-950 font-semibold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
@@ -109,7 +109,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 
           <button
             onClick={() => onTabChange('collections')}
-            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'collections'
                 ? 'border-neutral-900 text-neutral-950 font-semibold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
@@ -121,7 +121,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 
           <button
             onClick={() => onTabChange('commissions')}
-            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap relative ${
+            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap relative cursor-pointer ${
               activeTab === 'commissions'
                 ? 'border-neutral-900 text-neutral-950 font-semibold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
@@ -138,7 +138,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 
           <button
             onClick={() => onTabChange('services')}
-            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'services'
                 ? 'border-neutral-900 text-neutral-950 font-semibold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
@@ -150,7 +150,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 
           <button
             onClick={() => onTabChange('ai-studio')}
-            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'ai-studio'
                 ? 'border-neutral-900 text-neutral-950 font-semibold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
@@ -162,7 +162,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 
           <button
             onClick={() => onTabChange('settings')}
-            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+            className={`py-4 border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'settings'
                 ? 'border-neutral-900 text-neutral-950 font-semibold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'

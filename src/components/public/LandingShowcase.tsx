@@ -25,8 +25,10 @@ interface LandingShowcaseProps {
   creators: Creator[];
   featuredArtworks: Artwork[];
   onSelectCreator: (creator: Creator) => void;
-  onOpenStudio: (claimedHandle?: string) => void;
+  onOpenStudio: () => void;
   onInspectArtwork: (artwork: Artwork) => void;
+  onClaimHandle: (handle: string) => void;
+  onOpenOnboarding: () => void;
 }
 
 export const LandingShowcase: React.FC<LandingShowcaseProps> = ({
@@ -35,9 +37,12 @@ export const LandingShowcase: React.FC<LandingShowcaseProps> = ({
   onSelectCreator,
   onOpenStudio,
   onInspectArtwork,
+  onClaimHandle,
+  onOpenOnboarding,
 }) => {
   // Interactive State
   const [handleInput, setHandleInput] = useState('');
+  const [handleError, setHandleError] = useState<string | null>(null);
   const [handleClaimedSuccess, setHandleClaimedSuccess] = useState(false);
   const [activeAITab, setActiveAITab] = useState<'metadata' | 'bio' | 'brief'>('metadata');
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
@@ -49,12 +54,23 @@ export const LandingShowcase: React.FC<LandingShowcaseProps> = ({
 
   const handleClaimSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setHandleError(null);
     if (!handleInput.trim()) return;
     const cleanHandle = handleInput.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (cleanHandle.length < 2) {
+      setHandleError('Handle must be at least 2 characters.');
+      return;
+    }
+    const isTaken = creators.some(c => c.handle.toLowerCase() === cleanHandle);
+    if (isTaken) {
+      setHandleError(`@${cleanHandle} is already registered on ATELIER. Please choose another handle.`);
+      return;
+    }
     setHandleClaimedSuccess(true);
     setTimeout(() => {
-      onOpenStudio(cleanHandle);
-    }, 900);
+      onClaimHandle(cleanHandle);
+      setHandleClaimedSuccess(false);
+    }, 600);
   };
 
   const scrollToSection = (id: string) => {
@@ -94,7 +110,7 @@ export const LandingShowcase: React.FC<LandingShowcaseProps> = ({
             {/* CTA Group */}
             <div className="pt-2 flex flex-wrap items-center gap-4">
               <button
-                onClick={() => scrollToSection('claim-section')}
+                onClick={onOpenOnboarding}
                 className="px-7 py-3.5 bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-semibold uppercase tracking-wider rounded-xs transition-colors shadow-sm inline-flex items-center gap-2.5 cursor-pointer"
               >
                 <span>Create Your Portfolio</span>
@@ -890,9 +906,15 @@ Deliverables: Original wood-fired vessel, certificate of provenance, custom timb
                 </button>
               </div>
 
+              {handleError && (
+                <p className="text-xs text-rose-400 mt-3 font-mono animate-fadeIn text-left">
+                  ⚠ {handleError}
+                </p>
+              )}
+
               {handleClaimedSuccess && (
                 <p className="text-xs text-emerald-400 mt-3 font-mono animate-fadeIn">
-                  ✓ Handle reserved! Transitioning to your studio space...
+                  ✓ Handle reserved! Preparing your studio onboarding...
                 </p>
               )}
             </form>

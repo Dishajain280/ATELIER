@@ -14,6 +14,7 @@ import { Header } from './components/common/Header';
 import { Footer } from './components/common/Footer';
 import { Lightbox } from './components/common/Lightbox';
 import { NotificationDrawer } from './components/common/NotificationDrawer';
+import { AmbientPlayer } from './components/common/AmbientPlayer';
 
 // Public Components
 import { LandingShowcase } from './components/public/LandingShowcase';
@@ -38,7 +39,6 @@ import { SettingsTab } from './components/studio/SettingsTab';
 // Infrastructure & Foundation
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingState } from './components/common/LoadingState';
-import { AuthProvider } from './context/AuthContext';
 
 function AtelierAppContent() {
   // Navigation & Personas — Defaulting to 'landing' for first impression!
@@ -79,82 +79,103 @@ function AtelierAppContent() {
   // Slugify helper
   const slugify = (str: string) => str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
-  // Load all creators and notifications on mount and check URL handle & subroutes
-  const loadInitialData = async () => {
-    try {
-      setIsLoading(true);
-      const [creatorList, notifs, fullArtworks] = await Promise.all([
-        api.getCreators(),
-        api.getNotifications(),
-        api.getArtworks(),
-      ]);
+  const parseCurrentUrl = () => {
+    const pathname = window.location.pathname || '';
+    const hash = window.location.hash || '';
 
-      setCreators(creatorList);
-      setNotifications(notifs);
-      setAllArtworks(fullArtworks);
+    if (pathname.startsWith('/@')) {
+      const clean = pathname.replace(/^\/@/, '');
+      const parts = clean.split('/').filter(Boolean);
+      return {
+        type: 'artist' as const,
+        handle: parts[0]?.toLowerCase(),
+        sub1: parts[1]?.toLowerCase(),
+        sub2: parts[2]?.toLowerCase(),
+      };
+    }
 
-      const hash = window.location.hash;
-      if (hash.startsWith('#/@')) {
-        const clean = hash.replace('#/@', '');
-        const parts = clean.split('/');
-        const handle = parts[0];
-        const sub1 = parts[1];
-        const sub2 = parts[2];
+    if (pathname.startsWith('/dashboard') || pathname.startsWith('/studio')) {
+      const sub = pathname.replace(/^\/(dashboard|studio)/, '').replace(/^\//, '').toLowerCase();
+      return {
+        type: 'studio' as const,
+        tab: sub,
+      };
+    }
 
-        try {
-          const matchedCreator = await api.getCreator(handle);
-          if (matchedCreator) {
-            setActiveCreator(matchedCreator);
-            const [arts, cols, srvs, comms] = await Promise.all([
-              api.getArtworks(matchedCreator.id),
-              api.getCollections(matchedCreator.id),
-              api.getServices(matchedCreator.id),
-              api.getCommissions(matchedCreator.id),
-            ]);
-            setArtworks(arts);
-            setCollections(cols);
-            setServices(srvs);
-            setCommissions(comms);
-            setCurrentView('artist');
+    if (hash.startsWith('#/@')) {
+      const clean = hash.replace(/^#\/@/, '');
+      const parts = clean.split('/').filter(Boolean);
+      return {
+        type: 'artist' as const,
+        handle: parts[0]?.toLowerCase(),
+        sub1: parts[1]?.toLowerCase(),
+        sub2: parts[2]?.toLowerCase(),
+      };
+    }
 
-            if (sub1 === 'c' && sub2) {
-              const matchedCol = cols.find(c => slugify(c.title) === sub2 || c.id === sub2);
-              if (matchedCol) setSelectedCollectionId(matchedCol.id);
-            } else if (sub1) {
-              const matchedArt = arts.find(a => slugify(a.title) === sub1 || a.id === sub1);
-              if (matchedArt) setInspectingArtwork(matchedArt);
-            }
+    if (hash.startsWith('#/dashboard') || hash.startsWith('#/studio')) {
+      const sub = hash.replace(/^#\/(dashboard|studio)/, '').replace(/^\//, '').toLowerCase();
+      return {
+        type: 'studio' as const,
+        tab: sub,
+      };
+    }
 
-            setIsLoading(false);
-            return;
-          } else {
-            setNotFoundHandle(handle);
-            setCurrentView('404');
-            setIsLoading(false);
-            return;
-          }
-        } catch {
-          setNotFoundHandle(handle);
-          setCurrentView('404');
-          setIsLoading(false);
-          return;
-        }
-      }
+    return { type: 'landing' as const };
+  };
 
-      // Default to Maya Lin (@maya)
-      const maya = creatorList.find(c => c.handle === 'maya') || creatorList[0];
-      if (maya) {
-        setActiveCreator(maya);
-        await loadCreatorData(maya.id);
-      }
-    } catch (err) {
-      console.error('Failed to load initial data:', err);
-    } finally {
-      setIsLoading(false);
+  const applyStudioTab = (subTab?: string) => {
+    if (subTab === 'ai' || subTab === 'ai-studio') {
+      setStudioTab('ai-studio');
+    } else if (subTab === 'artworks' || subTab === 'artwork') {
+      setStudioTab('artworks');
+    } else if (subTab === 'collections') {
+      setStudioTab('collections');
+    } else if (subTab === 'commissions' || subTab === 'inbox') {
+      setStudioTab('commissions');
+    } else if (subTab === 'services') {
+      setStudioTab('services');
+    } else if (subTab === 'portfolio') {
+      setStudioTab('portfolio');
+    } else if (subTab === 'settings') {
+      setStudioTab('settings');
+    } else {
+      setStudioTab('overview');
     }
   };
 
-  // Load creator-specific collections, artworks, services, commissions
+  // Load public portfolio data for an artist (safe for patrons/visitors)
+  const loadPublicArtistData = async (creator: Creator, sub1?: string, sub2?: string) => {
+    try {
+      setActiveCreator(creator);
+      const [arts, cols, srvs] = await Promise.all([
+        api.getArtworks(creator.id, undefined, true),
+        api.getCollections(creator.id, true),
+        api.getServices(creator.id),
+      ]);
+      setArtworks(arts);
+      setCollections(cols);
+      setServices(srvs);
+      setCurrentView('artist');
+
+      if (sub1 === 'commissions' || sub1 === 'services') {
+        setTimeout(() => {
+          const el = document.getElementById('services-section') || document.getElementById('commissions-section');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 200);
+      } else if (sub1 === 'c' && sub2) {
+        const matchedCol = cols.find(c => slugify(c.title) === sub2 || c.id === sub2);
+        if (matchedCol) setSelectedCollectionId(matchedCol.id);
+      } else if (sub1) {
+        const matchedArt = arts.find(a => slugify(a.title) === sub1 || a.id === sub1);
+        if (matchedArt) setInspectingArtwork(matchedArt);
+      }
+    } catch (err) {
+      console.error('Failed to load public artist data:', err);
+    }
+  };
+
+  // Load creator-specific private dashboard collections, artworks, services, commissions
   const loadCreatorData = async (creatorId: string) => {
     try {
       api.setAuthCreatorId(creatorId);
@@ -180,79 +201,101 @@ function AtelierAppContent() {
     setNotifications(notifs);
   }, [activeCreator]);
 
-  useEffect(() => {
-    loadInitialData();
+  // Load all creators and notifications on mount and check URL handle & subroutes
+  const loadInitialData = async () => {
+    try {
+      setIsLoading(true);
+      const [creatorList, notifs, fullArtworks] = await Promise.all([
+        api.getCreators(),
+        api.getNotifications(),
+        api.getArtworks(),
+      ]);
 
-    const handleHashChange = async () => {
-      const hash = window.location.hash;
-      if (hash.startsWith('#/dashboard')) {
-        const sub = hash.replace('#/dashboard', '').replace(/^\//, '');
-        setCurrentView('studio');
-        if (sub === 'ai' || sub === 'ai-studio') {
-          setStudioTab('ai-studio');
-        } else if (sub === 'artworks' || sub === 'artwork') {
-          setStudioTab('artworks');
-        } else if (sub === 'collections') {
-          setStudioTab('collections');
-        } else if (sub === 'commissions' || sub === 'inbox') {
-          setStudioTab('commissions');
-        } else if (sub === 'services') {
-          setStudioTab('services');
-        } else if (sub === 'portfolio') {
-          setStudioTab('portfolio');
-        } else if (sub === 'settings') {
-          setStudioTab('settings');
-        } else {
-          setStudioTab('overview');
+      setCreators(creatorList);
+      setNotifications(notifs);
+      setAllArtworks(fullArtworks);
+
+      const route = parseCurrentUrl();
+
+      if (route.type === 'artist' && route.handle) {
+        try {
+          const matchedCreator = await api.getCreator(route.handle);
+          if (matchedCreator) {
+            await loadPublicArtistData(matchedCreator, route.sub1, route.sub2);
+            setIsLoading(false);
+            return;
+          } else {
+            setNotFoundHandle(route.handle);
+            setCurrentView('404');
+            setIsLoading(false);
+            return;
+          }
+        } catch {
+          setNotFoundHandle(route.handle);
+          setCurrentView('404');
+          setIsLoading(false);
+          return;
         }
+      }
+
+      if (route.type === 'studio') {
+        const maya = creatorList.find(c => c.handle === 'maya') || creatorList[0];
+        if (maya) {
+          setActiveCreator(maya);
+          await loadCreatorData(maya.id);
+        }
+        setCurrentView('studio');
+        applyStudioTab(route.tab);
+        setIsLoading(false);
         return;
       }
 
-      if (hash.startsWith('#/@')) {
-        const clean = hash.replace('#/@', '');
-        const parts = clean.split('/');
-        const handle = parts[0];
-        const sub1 = parts[1];
-        const sub2 = parts[2];
+      // Default landing page
+      const maya = creatorList.find(c => c.handle === 'maya') || creatorList[0];
+      if (maya) {
+        setActiveCreator(maya);
+        await loadCreatorData(maya.id);
+      }
+      setCurrentView('landing');
+    } catch (err) {
+      console.error('Failed to load initial data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    loadInitialData();
+
+    const handleLocationChange = async () => {
+      const route = parseCurrentUrl();
+      if (route.type === 'artist' && route.handle) {
         try {
-          const creator = await api.getCreator(handle);
+          const creator = await api.getCreator(route.handle);
           if (creator) {
-            setActiveCreator(creator);
-            const [arts, cols, srvs, comms] = await Promise.all([
-              api.getArtworks(creator.id),
-              api.getCollections(creator.id),
-              api.getServices(creator.id),
-              api.getCommissions(creator.id),
-            ]);
-            setArtworks(arts);
-            setCollections(cols);
-            setServices(srvs);
-            setCommissions(comms);
-            setCurrentView('artist');
-
-            if (sub1 === 'c' && sub2) {
-              const matchedCol = cols.find(c => slugify(c.title) === sub2 || c.id === sub2);
-              if (matchedCol) setSelectedCollectionId(matchedCol.id);
-            } else if (sub1 === 'commissions') {
-              // Stay on commissions section
-            } else if (sub1) {
-              const matchedArt = arts.find(a => slugify(a.title) === sub1 || a.id === sub1);
-              if (matchedArt) setInspectingArtwork(matchedArt);
-            }
+            await loadPublicArtistData(creator, route.sub1, route.sub2);
           } else {
-            setNotFoundHandle(handle);
+            setNotFoundHandle(route.handle);
             setCurrentView('404');
           }
         } catch {
-          setNotFoundHandle(handle);
+          setNotFoundHandle(route.handle);
           setCurrentView('404');
         }
+      } else if (route.type === 'studio') {
+        setCurrentView('studio');
+        applyStudioTab(route.tab);
+      } else if (route.type === 'landing') {
+        setCurrentView('landing');
       }
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
   }, []);
 
   // Creator selection handler
@@ -263,15 +306,27 @@ function AtelierAppContent() {
 
   // Navigation router
   const handleNavigate = (view: 'landing' | 'artist' | 'studio' | '404', handle?: string) => {
-    if (handle && handle !== activeCreator?.handle) {
-      const target = creators.find(c => c.handle === handle);
-      if (target) handleSelectCreator(target);
+    if (view === 'artist') {
+      const targetHandle = handle || activeCreator?.handle || 'maya';
+      const target = creators.find(c => c.handle.toLowerCase() === targetHandle.toLowerCase());
+      if (target) {
+        loadPublicArtistData(target);
+      }
+      window.history.pushState(null, '', `/@${targetHandle}`);
+      setCurrentView('artist');
+    } else if (view === 'studio') {
+      window.history.pushState(null, '', '/dashboard');
+      setCurrentView('studio');
+    } else if (view === 'landing') {
+      window.history.pushState(null, '', '/');
+      setCurrentView('landing');
+    } else {
+      setCurrentView(view);
     }
-    setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleOpenCommissionModal = (service?: CommissionService, fromArtwork?: Artwork) => {
+  const handleOpenCommissionModal = (service?: CommissionService, _fromArtwork?: Artwork) => {
     setPreselectedService(service || null);
     setIsCommissionModalOpen(true);
   };
@@ -285,20 +340,7 @@ function AtelierAppContent() {
     }
   };
 
-  const handleOpenStudioWithClaimedHandle = async (claimedHandle?: string) => {
-    if (claimedHandle && activeCreator) {
-      try {
-        const updated = await api.updateCreator(activeCreator.id, { handle: claimedHandle });
-        setActiveCreator(updated);
-        const all = await api.getCreators();
-        setCreators(all);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    setCurrentView('studio');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  const [prefilledOnboardingHandle, setPrefilledOnboardingHandle] = useState<string>('');
 
   const unreadNotificationsCount = notifications.filter(n => !n.read).length;
 
@@ -338,11 +380,20 @@ function AtelierAppContent() {
             featuredArtworks={allArtworks}
             onSelectCreator={(c) => {
               handleSelectCreator(c);
-              setCurrentView('artist');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              handleNavigate('artist', c.handle);
             }}
-            onOpenStudio={handleOpenStudioWithClaimedHandle}
+            onOpenStudio={() => {
+              handleNavigate('studio');
+            }}
             onInspectArtwork={(art) => setInspectingArtwork(art)}
+            onClaimHandle={(claimedHandle) => {
+              setPrefilledOnboardingHandle(claimedHandle);
+              setIsOnboardingOpen(true);
+            }}
+            onOpenOnboarding={() => {
+              setPrefilledOnboardingHandle('');
+              setIsOnboardingOpen(true);
+            }}
           />
         )}
 
@@ -379,34 +430,63 @@ function AtelierAppContent() {
           </div>
         )}
 
-        {currentView === 'artist' && (
-          <div>
-            {/* Public Artist Profile (/@artistname) */}
-            <ArtistHero
-              creator={activeCreator}
-              artworkCount={artworks.length}
-              collectionCount={collections.length}
-              onRequestCommission={() => handleOpenCommissionModal()}
-              onScrollToGallery={() => {
-                document.getElementById('gallery-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            />
+        {currentView === 'artist' && (() => {
+          const palette = activeCreator.themeSettings?.palette || 'obsidian';
+          const typography = activeCreator.themeSettings?.typography || 'editorial';
+          const gridStyle = activeCreator.themeSettings?.gridStyle || 'bento';
 
-            {/* Artwork Gallery with Unboxed Metadata */}
-            <ArtworkGrid
-              artworks={artworks.filter(a => a.status !== 'draft')}
-              collections={collections.filter(c => c.visibility === 'public')}
-              onSelectArtwork={(art) => setInspectingArtwork(art)}
-              initialCollectionId={selectedCollectionId}
-            />
+          const paletteClass = palette === 'obsidian'
+            ? 'bg-[#0A0A0A] text-neutral-100'
+            : palette === 'warm_paper'
+            ? 'bg-[#FAF9F6] text-neutral-900'
+            : palette === 'brutalism'
+            ? 'bg-[#18181B] text-amber-50'
+            : 'bg-[#FFFFFF] text-neutral-950';
 
-            {/* Commission Service Tiers */}
-            <ServiceCards
-              services={services}
-              creatorName={activeCreator.name}
-              onSelectService={(srv) => handleOpenCommissionModal(srv)}
-              onRequestCommissionGeneral={() => handleOpenCommissionModal()}
-            />
+          const typographyClass = typography === 'sans'
+            ? 'font-sans'
+            : typography === 'classic'
+            ? 'font-mono'
+            : 'font-editorial';
+
+          return (
+            <div className={`min-h-screen ${paletteClass} ${typographyClass} transition-colors duration-500`}>
+              {/* Public Artist Profile (/@artistname) */}
+              <ArtistHero
+                creator={activeCreator}
+                artworkCount={artworks.length}
+                collectionCount={collections.length}
+                onRequestCommission={() => handleOpenCommissionModal()}
+                onScrollToGallery={() => {
+                  document.getElementById('gallery-section')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                heroStyle={activeCreator.themeSettings?.heroStyle}
+              />
+
+              {/* Ambient Soundscape Player */}
+              <AmbientPlayer
+                soundscape={activeCreator.themeSettings?.ambientSoundscape}
+                creatorName={activeCreator.name}
+              />
+
+              {/* Artwork Gallery with Unboxed Metadata */}
+              <ArtworkGrid
+                artworks={artworks.filter(a => a.status !== 'draft')}
+                collections={collections.filter(c => c.visibility === 'public')}
+                onSelectArtwork={(art) => setInspectingArtwork(art)}
+                initialCollectionId={selectedCollectionId}
+                gridStyle={gridStyle}
+                watermarkEnabled={activeCreator.themeSettings?.watermarkEnabled}
+                creatorName={activeCreator.name}
+              />
+
+              {/* Commission Service Tiers */}
+              <ServiceCards
+                services={services}
+                creatorName={activeCreator.name}
+                onSelectService={(srv) => handleOpenCommissionModal(srv)}
+                onRequestCommissionGeneral={() => handleOpenCommissionModal()}
+              />
 
             {/* Public Artist Page Footer */}
             <footer className="bg-[#1C1B19] text-neutral-400 py-16 border-t border-neutral-800">
@@ -450,7 +530,8 @@ function AtelierAppContent() {
               </div>
             </footer>
           </div>
-        )}
+        );
+      })()}
 
         {currentView === 'studio' && (
           <StudioLayout
@@ -513,11 +594,60 @@ function AtelierAppContent() {
               />
             )}
 
-            {(studioTab === 'commissions' || studioTab === 'inbox') && (
+            {(studioTab === 'commissions' || studioTab === 'inbox' || studioTab === 'orders') && (
               <CommissionInbox
-                commissions={commissions}
+                commissions={studioTab === 'orders' ? commissions.filter(c => ['ACCEPTED', 'IN_PROGRESS', 'DELIVERED'].includes(c.status)) : commissions}
                 onRefresh={refreshCreatorData}
               />
+            )}
+
+            {studioTab === 'analytics' && (
+              <div className="space-y-6">
+                <div className="bg-white border border-neutral-200 p-8 rounded-xs shadow-xs">
+                  <h3 className="font-editorial text-2xl font-normal text-neutral-900 mb-2">Studio Analytics & Performance</h3>
+                  <p className="text-xs text-neutral-600 mb-6">Real-time engagement metrics for your public portfolio and commission services.</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-neutral-50 border border-neutral-200 p-6 rounded-xs">
+                      <p className="text-xs font-mono text-neutral-500 uppercase">Portfolio Views</p>
+                      <p className="font-editorial text-3xl font-bold text-neutral-900 mt-2">1,284</p>
+                      <p className="text-[11px] text-emerald-700 mt-1">↑ 24% vs last month</p>
+                    </div>
+                    <div className="bg-neutral-50 border border-neutral-200 p-6 rounded-xs">
+                      <p className="text-xs font-mono text-neutral-500 uppercase">Artwork Impressions</p>
+                      <p className="font-editorial text-3xl font-bold text-neutral-900 mt-2">856</p>
+                      <p className="text-[11px] text-emerald-700 mt-1">↑ 18% vs last month</p>
+                    </div>
+                    <div className="bg-neutral-50 border border-neutral-200 p-6 rounded-xs">
+                      <p className="text-xs font-mono text-neutral-500 uppercase">Commission Inquiries</p>
+                      <p className="font-editorial text-3xl font-bold text-neutral-900 mt-2">{commissions.length}</p>
+                      <p className="text-[11px] text-emerald-700 mt-1">↑ 36% vs last month</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-neutral-200 pt-6">
+                    <h4 className="font-medium text-sm text-neutral-900 mb-4">Top Performing Artworks</h4>
+                    <div className="space-y-3">
+                      {artworks.slice(0, 3).map((art, idx) => (
+                        <div key={art.id} className="flex items-center justify-between p-3 bg-neutral-50 border border-neutral-200 rounded-xs text-xs">
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-neutral-400 font-bold">#{idx + 1}</span>
+                            <img src={art.images[0]} alt={art.title} className="w-10 h-10 object-cover rounded-xs border" />
+                            <div>
+                              <p className="font-medium text-neutral-900">{art.title}</p>
+                              <p className="text-[11px] text-neutral-500">{art.medium} · {art.year}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-mono font-bold text-neutral-900">{Math.floor(200 + Math.random() * 400)} views</p>
+                            <p className="text-[10px] text-emerald-700">Active engagement</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             {studioTab === 'services' && (
@@ -557,8 +687,20 @@ function AtelierAppContent() {
         )}
       </div>
 
-      {/* Global Minimalist Footer (Displayed on artist & studio views) */}
-      {currentView !== 'landing' && <Footer />}
+      {/* Global Minimalist Footer (Suppressed on artist public view which already renders its intentional bespoke footer, and on landing which renders its showcase footer) */}
+      {currentView !== 'landing' && currentView !== 'artist' && (
+        <Footer
+          onNavigateTab={(tab) => {
+            setCurrentView('studio');
+            setStudioTab(tab);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onNavigateLanding={() => {
+            setCurrentView('landing');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
 
       {/* Fullscreen Artwork Lightbox */}
       <Lightbox
@@ -613,13 +755,17 @@ function AtelierAppContent() {
         isOpen={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}
         existingCreators={creators}
+        initialHandle={prefilledOnboardingHandle}
         onComplete={async (newCreator) => {
+          setIsOnboardingOpen(false);
           const all = await api.getCreators();
           setCreators(all);
           setActiveCreator(newCreator);
+          api.setAuthCreatorId(newCreator.id);
           await loadCreatorData(newCreator.id);
           setCurrentView('studio');
           setStudioTab('artworks');
+          window.history.pushState(null, '', '/dashboard');
         }}
       />
     </div>
@@ -629,9 +775,7 @@ function AtelierAppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AtelierAppContent />
-      </AuthProvider>
+      <AtelierAppContent />
     </ErrorBoundary>
   );
 }

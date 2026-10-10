@@ -59,27 +59,55 @@ export const ServiceManager: React.FC<ServiceManagerProps> = ({
     if (!title.trim() || !description.trim()) return;
     setErrorMessage(null);
 
+    if (title.trim().length > 120) {
+      setErrorMessage('Service tier title cannot exceed 120 characters.');
+      return;
+    }
+
+    if (description.trim().length > 2000) {
+      setErrorMessage('Scope description cannot exceed 2,000 characters.');
+      return;
+    }
+
+    const priceNum = Number(basePrice);
+    if (priceNum < 0 || priceNum > 1000000) {
+      setErrorMessage('Base price must be between $0 and $1,000,000.');
+      return;
+    }
+
+    const weeksNum = Number(turnaroundWeeks);
+    if (weeksNum < 1 || weeksNum > 104) {
+      setErrorMessage('Turnaround must be between 1 and 104 weeks.');
+      return;
+    }
+
+    const revNum = Number(revisionsIncluded);
+    if (revNum < 0 || revNum > 50) {
+      setErrorMessage('Revisions must be between 0 and 50.');
+      return;
+    }
+
     try {
       if (editingId) {
         await api.updateService(editingId, {
-          title: title.trim(),
-          description: description.trim(),
-          basePrice: Number(basePrice),
-          turnaroundWeeks: Number(turnaroundWeeks),
-          revisionsIncluded: Number(revisionsIncluded),
-          deliverableSummary: deliverableSummary.trim(),
+          title: title.trim().slice(0, 120),
+          description: description.trim().slice(0, 2000),
+          basePrice: priceNum,
+          turnaroundWeeks: weeksNum,
+          revisionsIncluded: revNum,
+          deliverableSummary: deliverableSummary.trim().slice(0, 1000),
           active,
         });
       } else {
         await api.createService({
           creatorId,
-          title: title.trim(),
-          description: description.trim(),
-          basePrice: Number(basePrice),
+          title: title.trim().slice(0, 120),
+          description: description.trim().slice(0, 2000),
+          basePrice: priceNum,
           currency: 'USD',
-          turnaroundWeeks: Number(turnaroundWeeks),
-          revisionsIncluded: Number(revisionsIncluded),
-          deliverableSummary: deliverableSummary.trim(),
+          turnaroundWeeks: weeksNum,
+          revisionsIncluded: revNum,
+          deliverableSummary: deliverableSummary.trim().slice(0, 1000),
           active,
           sampleImages: [],
         });
@@ -163,6 +191,7 @@ export const ServiceManager: React.FC<ServiceManagerProps> = ({
               <input
                 type="text"
                 required
+                maxLength={120}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Bespoke Sculptural Vessel"
@@ -178,6 +207,7 @@ export const ServiceManager: React.FC<ServiceManagerProps> = ({
                 type="number"
                 required
                 min="0"
+                max="1000000"
                 step="50"
                 value={basePrice}
                 onChange={(e) => setBasePrice(Number(e.target.value))}
@@ -193,6 +223,7 @@ export const ServiceManager: React.FC<ServiceManagerProps> = ({
             <textarea
               required
               rows={3}
+              maxLength={2000}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Outline what this custom engagement entails, clay body options, kiln temperatures..."
@@ -208,6 +239,7 @@ export const ServiceManager: React.FC<ServiceManagerProps> = ({
               <input
                 type="number"
                 min="1"
+                max="104"
                 value={turnaroundWeeks}
                 onChange={(e) => setTurnaroundWeeks(Number(e.target.value))}
                 className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-xs focus:outline-none focus:border-neutral-900 font-mono"
@@ -221,6 +253,7 @@ export const ServiceManager: React.FC<ServiceManagerProps> = ({
               <input
                 type="number"
                 min="0"
+                max="50"
                 value={revisionsIncluded}
                 onChange={(e) => setRevisionsIncluded(Number(e.target.value))}
                 className="w-full px-3 py-2 text-xs bg-white border border-neutral-300 rounded-xs focus:outline-none focus:border-neutral-900 font-mono"
@@ -234,6 +267,7 @@ export const ServiceManager: React.FC<ServiceManagerProps> = ({
             </label>
             <input
               type="text"
+              maxLength={1000}
               value={deliverableSummary}
               onChange={(e) => setDeliverableSummary(e.target.value)}
               placeholder="e.g. One bespoke vessel (up to 45cm) with signed certificate of authenticity."

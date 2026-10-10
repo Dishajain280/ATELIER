@@ -29,7 +29,12 @@ export interface Creator {
   themeSettings: {
     accentColor: string;
     typography: 'editorial' | 'sans' | 'classic';
-    gridStyle: 'masonry' | 'bento' | 'minimal';
+    gridStyle: 'editorial' | 'bento' | 'masonry' | 'minimal';
+    palette: 'obsidian' | 'warm_paper' | 'brutalism' | 'ivory';
+    watermarkEnabled?: boolean;
+    ambientSoundscape?: 'none' | 'vinyl' | 'rain' | 'waves' | 'studio' | 'lofi';
+    heroStyle?: 'immersive' | 'typographic' | 'asymmetrical';
+    sectionOrder?: string[];
   };
   acceptingCommissions: boolean;
   commissionNotice?: string;
@@ -44,6 +49,8 @@ export interface Collection {
   description?: string;
   order: number;
   visibility: 'public' | 'archived' | 'unlisted';
+  isPasswordProtected?: boolean;
+  password?: string;
   coverImage?: string;
   artworkCount?: number;
   createdAt: string;
@@ -64,6 +71,8 @@ export interface Artwork {
   status: ArtworkStatus;
   price?: number;
   currency?: string;
+  processNotes?: string;
+  provenance?: string;
   createdAt: string;
   updatedAt: string;
 }
