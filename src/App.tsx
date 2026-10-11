@@ -8,6 +8,7 @@ import {
   NotificationItem 
 } from './types/index.js';
 import { api } from './services/api.js';
+import { SEED_CREATORS, SEED_ARTWORKS } from './server/db/seed.ts';
 
 // Common Components
 import { Header } from './components/common/Header';
@@ -206,20 +207,35 @@ function AtelierAppContent() {
     try {
       setIsLoading(true);
       const [creatorList, notifs, fullArtworks] = await Promise.all([
-        api.getCreators(),
-        api.getNotifications(),
-        api.getArtworks(),
+        api.getCreators().catch(err => {
+          console.warn('[ATELIER] Using fallback creators:', err);
+          return SEED_CREATORS;
+        }),
+        api.getNotifications().catch(err => {
+          console.warn('[ATELIER] Using fallback notifications:', err);
+          return [];
+        }),
+        api.getArtworks().catch(err => {
+          console.warn('[ATELIER] Using fallback artworks:', err);
+          return SEED_ARTWORKS;
+        }),
       ]);
 
-      setCreators(creatorList);
-      setNotifications(notifs);
-      setAllArtworks(fullArtworks);
+      const safeCreators = (creatorList && creatorList.length > 0) ? creatorList : SEED_CREATORS;
+      const safeArtworks = (fullArtworks && fullArtworks.length > 0) ? fullArtworks : SEED_ARTWORKS;
+      const safeNotifs = notifs || [];
+
+      setCreators(safeCreators);
+      setNotifications(safeNotifs);
+      setAllArtworks(safeArtworks);
 
       const route = parseCurrentUrl();
 
       if (route.type === 'artist' && route.handle) {
         try {
-          const matchedCreator = await api.getCreator(route.handle);
+          const matchedCreator = await api.getCreator(route.handle).catch(() => {
+            return safeCreators.find(c => c.handle.toLowerCase() === route.handle?.toLowerCase());
+          });
           if (matchedCreator) {
             await loadPublicArtistData(matchedCreator, route.sub1, route.sub2);
             setIsLoading(false);
@@ -239,7 +255,7 @@ function AtelierAppContent() {
       }
 
       if (route.type === 'studio') {
-        const maya = creatorList.find(c => c.handle === 'maya') || creatorList[0];
+        const maya = safeCreators.find(c => c.handle === 'maya') || safeCreators[0];
         if (maya) {
           setActiveCreator(maya);
           await loadCreatorData(maya.id);
@@ -251,7 +267,7 @@ function AtelierAppContent() {
       }
 
       // Default landing page
-      const maya = creatorList.find(c => c.handle === 'maya') || creatorList[0];
+      const maya = safeCreators.find(c => c.handle === 'maya') || safeCreators[0];
       if (maya) {
         setActiveCreator(maya);
         await loadCreatorData(maya.id);
