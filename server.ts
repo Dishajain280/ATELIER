@@ -1,10 +1,12 @@
 import 'dotenv/config';
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { z } from 'zod';
-import { storage } from './src/server/db/storage.js';
+import { storage } from './src/server/db/storage.ts';
 import { 
   generateArtworkMetadata, 
   generateArtistBio, 
@@ -12,7 +14,7 @@ import {
   generateArtworkAssistant,
   generateProfileAssistant,
   generateCommissionBriefAssistant,
-} from './src/server/ai/gemini.js';
+} from './src/server/ai/gemini.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -765,12 +767,21 @@ async function startServer() {
   });
 
   // --- Static & Vite Middleware Integration ---
-  if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
+  const distDir = path.resolve(__dirname, 'dist');
+  const distExists = fs.existsSync(distDir) && fs.existsSync(path.resolve(distDir, 'index.html'));
+
+  if (isProduction || (process.env.NODE_ENV !== 'development' && distExists)) {
+    console.log('[ATELIER] Running in production mode, serving pre-built assets from:', distDir);
+    app.use(express.static(distDir));
     app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: `API route ${req.path} not found` });
+      }
+      res.sendFile(path.resolve(distDir, 'index.html'));
     });
   } else {
+    console.log('[ATELIER] Running in development mode with Vite middleware');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

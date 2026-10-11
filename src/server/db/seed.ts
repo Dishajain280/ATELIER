@@ -1,4 +1,4 @@
-import { Creator, Collection, Artwork, CommissionService, CommissionRequest } from '../../types/index.js';
+import type { Creator, Collection, Artwork, CommissionService, CommissionRequest } from '../../types/index.ts';
 
 export const SEED_CREATORS: Creator[] = [
   {

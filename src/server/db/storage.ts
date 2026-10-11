@@ -1,4 +1,4 @@
-import { 
+import type { 
   Creator, 
   Collection, 
   Artwork, 
@@ -6,14 +6,14 @@ import {
   CommissionRequest, 
   NotificationItem,
   CommissionStatus 
-} from '../../types/index.js';
+} from '../../types/index.ts';
 import { 
   SEED_CREATORS, 
   SEED_COLLECTIONS, 
   SEED_ARTWORKS, 
   SEED_COMMISSION_SERVICES, 
   SEED_COMMISSION_REQUESTS 
-} from './seed.js';
+} from './seed.ts';
 
 class StorageEngine {
   private creators: Map<string, Creator> = new Map();

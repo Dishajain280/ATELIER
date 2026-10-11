@@ -431,6 +431,13 @@ function AtelierAppContent() {
         )}
 
         {currentView === 'artist' && (() => {
+          if (!activeCreator) {
+            return (
+              <div className="min-h-screen flex items-center justify-center bg-[#FAF9F6] text-neutral-600">
+                <p className="font-editorial text-xl">Loading artist studio...</p>
+              </div>
+            );
+          }
           const palette = activeCreator.themeSettings?.palette || 'obsidian';
           const typography = activeCreator.themeSettings?.typography || 'editorial';
           const gridStyle = activeCreator.themeSettings?.gridStyle || 'bento';

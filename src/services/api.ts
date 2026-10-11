@@ -1,4 +1,4 @@
-import { 
+import type { 
   Creator, 
   Artwork, 
   Collection, 
@@ -6,7 +6,90 @@ import {
   CommissionRequest, 
   NotificationItem, 
   CommissionStatus 
-} from '../types/index.js';
+} from '../types/index.ts';
+import { 
+  SEED_CREATORS, 
+  SEED_ARTWORKS, 
+  SEED_COLLECTIONS, 
+  SEED_COMMISSION_SERVICES, 
+  SEED_COMMISSION_REQUESTS 
+} from '../server/db/seed.ts';
+
+const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
+  {
+    id: 'notif_welcome',
+    title: 'Welcome to ATELIER Backstage',
+    message: 'Your curatorial studio portfolio is live and accepting bespoke commission requests.',
+    recipientEmail: 'studio@mayalin.atelier',
+    timestamp: new Date().toISOString(),
+    read: false,
+    type: 'system',
+  },
+  {
+    id: 'notif_inquiry',
+    title: 'New Commission Inquiry',
+    message: 'Patron Julian Mercer submitted a request for Architectural Vessel Series.',
+    recipientEmail: 'studio@mayalin.atelier',
+    timestamp: new Date().toISOString(),
+    read: false,
+    type: 'commission_new',
+  },
+];
+
+class ClientFallbackStore {
+  creators: Creator[];
+  artworks: Artwork[];
+  collections: Collection[];
+  services: CommissionService[];
+  commissions: CommissionRequest[];
+  notifications: NotificationItem[];
+
+  constructor() {
+    this.creators = [...SEED_CREATORS];
+    this.artworks = [...SEED_ARTWORKS];
+    this.collections = [...SEED_COLLECTIONS];
+    this.services = [...SEED_COMMISSION_SERVICES];
+    this.commissions = [...SEED_COMMISSION_REQUESTS];
+    this.notifications = [...DEFAULT_NOTIFICATIONS];
+    this.loadFromStorage();
+  }
+
+  private loadFromStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem('atelier_local_store');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.creators?.length) this.creators = parsed.creators;
+        if (parsed.artworks?.length) this.artworks = parsed.artworks;
+        if (parsed.collections?.length) this.collections = parsed.collections;
+        if (parsed.services?.length) this.services = parsed.services;
+        if (parsed.commissions?.length) this.commissions = parsed.commissions;
+        if (parsed.notifications?.length) this.notifications = parsed.notifications;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  save() {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('atelier_local_store', JSON.stringify({
+        creators: this.creators,
+        artworks: this.artworks,
+        collections: this.collections,
+        services: this.services,
+        commissions: this.commissions,
+        notifications: this.notifications,
+      }));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+const clientStore = new ClientFallbackStore();
 
 class ApiService {
   private currentCreatorId: string | null = null;
@@ -19,22 +102,218 @@ class ApiService {
     return this.currentCreatorId;
   }
 
+  private handleClientFallback<T>(endpoint: string, options?: RequestInit): T | undefined {
+    const url = new URL(endpoint, 'http://localhost');
+    const pathname = url.pathname;
+    const method = options?.method?.toUpperCase() || 'GET';
+    const body = options?.body ? JSON.parse(options.body as string) : {};
+
+    // 1. Creators
+    if (pathname === '/api/creators' && method === 'GET') {
+      return clientStore.creators as unknown as T;
+    }
+    if (pathname.startsWith('/api/creators/') && method === 'GET') {
+      const handleOrId = decodeURIComponent(pathname.replace('/api/creators/', ''));
+      const found = clientStore.creators.find(c => c.handle.toLowerCase() === handleOrId.toLowerCase() || c.id === handleOrId);
+      if (found) return found as unknown as T;
+      return clientStore.creators[0] as unknown as T;
+    }
+    if (pathname === '/api/creators' && method === 'POST') {
+      const newCreator: Creator = {
+        id: 'creator_' + Date.now(),
+        handle: body.handle || 'artist_' + Date.now().toString(36),
+        name: body.name || 'New Artist',
+        email: body.email || 'studio@atelier.app',
+        bio: body.bio || '',
+        statement: body.statement || '',
+        avatarUrl: body.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+        disciplines: body.disciplines || ['Contemporary Craft'],
+        location: body.location || 'Studio Workspace',
+        socialLinks: body.socialLinks || {},
+        themeSettings: body.themeSettings || { accentColor: '#B45309', typography: 'editorial', gridStyle: 'bento', palette: 'obsidian' },
+        acceptingCommissions: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      clientStore.creators.push(newCreator);
+      clientStore.save();
+      return newCreator as unknown as T;
+    }
+    if (pathname.startsWith('/api/creators/') && method === 'PATCH') {
+      const id = pathname.replace('/api/creators/', '');
+      const idx = clientStore.creators.findIndex(c => c.id === id || c.handle === id);
+      if (idx !== -1) {
+        clientStore.creators[idx] = { ...clientStore.creators[idx], ...body, updatedAt: new Date().toISOString() };
+        clientStore.save();
+        return clientStore.creators[idx] as unknown as T;
+      }
+    }
+
+    // 2. Artworks
+    if (pathname === '/api/artworks' && method === 'GET') {
+      const creatorId = url.searchParams.get('creatorId');
+      const collectionId = url.searchParams.get('collectionId');
+      const publicOnly = url.searchParams.get('publicOnly') === 'true';
+
+      let results = [...clientStore.artworks];
+      if (creatorId) results = results.filter(a => a.creatorId === creatorId);
+      if (collectionId) results = results.filter(a => a.collectionId === collectionId);
+      if (publicOnly) results = results.filter(a => a.status !== 'draft');
+      return results as unknown as T;
+    }
+    if (pathname === '/api/artworks' && method === 'POST') {
+      const newArt: Artwork = {
+        id: 'art_' + Date.now(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...body,
+      };
+      clientStore.artworks.unshift(newArt);
+      clientStore.save();
+      return newArt as unknown as T;
+    }
+    if (pathname.startsWith('/api/artworks/') && method === 'PATCH') {
+      const id = pathname.replace('/api/artworks/', '');
+      const idx = clientStore.artworks.findIndex(a => a.id === id);
+      if (idx !== -1) {
+        clientStore.artworks[idx] = { ...clientStore.artworks[idx], ...body, updatedAt: new Date().toISOString() };
+        clientStore.save();
+        return clientStore.artworks[idx] as unknown as T;
+      }
+    }
+    if (pathname.startsWith('/api/artworks/') && method === 'DELETE') {
+      const id = pathname.replace('/api/artworks/', '');
+      clientStore.artworks = clientStore.artworks.filter(a => a.id !== id);
+      clientStore.save();
+      return { success: true } as unknown as T;
+    }
+
+    // 3. Collections
+    if (pathname === '/api/collections' && method === 'GET') {
+      const creatorId = url.searchParams.get('creatorId');
+      let cols = [...clientStore.collections];
+      if (creatorId) cols = cols.filter(c => c.creatorId === creatorId);
+      return cols as unknown as T;
+    }
+    if (pathname === '/api/collections' && method === 'POST') {
+      const newCol: Collection = {
+        id: 'col_' + Date.now(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        artworksCount: 0,
+        ...body,
+      };
+      clientStore.collections.push(newCol);
+      clientStore.save();
+      return newCol as unknown as T;
+    }
+    if (pathname.startsWith('/api/collections/') && method === 'PATCH') {
+      const id = pathname.replace('/api/collections/', '');
+      const idx = clientStore.collections.findIndex(c => c.id === id);
+      if (idx !== -1) {
+        clientStore.collections[idx] = { ...clientStore.collections[idx], ...body, updatedAt: new Date().toISOString() };
+        clientStore.save();
+        return clientStore.collections[idx] as unknown as T;
+      }
+    }
+
+    // 4. Services
+    if (pathname === '/api/services' && method === 'GET') {
+      const creatorId = url.searchParams.get('creatorId');
+      let srvs = [...clientStore.services];
+      if (creatorId) srvs = srvs.filter(s => s.creatorId === creatorId);
+      return srvs as unknown as T;
+    }
+    if (pathname === '/api/services' && method === 'POST') {
+      const newSrv: CommissionService = {
+        id: 'srv_' + Date.now(),
+        createdAt: new Date().toISOString(),
+        ...body,
+      };
+      clientStore.services.push(newSrv);
+      clientStore.save();
+      return newSrv as unknown as T;
+    }
+
+    // 5. Commissions
+    if (pathname === '/api/commissions' && method === 'GET') {
+      const creatorId = url.searchParams.get('creatorId');
+      let comms = [...clientStore.commissions];
+      if (creatorId) comms = comms.filter(c => c.creatorId === creatorId);
+      return comms as unknown as T;
+    }
+    if (pathname === '/api/commissions' && method === 'POST') {
+      const newComm: CommissionRequest = {
+        id: 'comm_' + Date.now(),
+        status: 'RECEIVED',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        currency: 'USD',
+        ...body,
+      };
+      clientStore.commissions.unshift(newComm);
+      clientStore.save();
+      return newComm as unknown as T;
+    }
+    if (pathname.includes('/status') && method === 'PATCH') {
+      const id = pathname.replace('/api/commissions/', '').replace('/status', '');
+      const idx = clientStore.commissions.findIndex(c => c.id === id);
+      if (idx !== -1) {
+        clientStore.commissions[idx] = {
+          ...clientStore.commissions[idx],
+          status: body.status,
+          statusNotes: body.statusNotes,
+          updatedAt: new Date().toISOString(),
+        };
+        clientStore.save();
+        return clientStore.commissions[idx] as unknown as T;
+      }
+    }
+
+    // 6. Notifications
+    if (pathname === '/api/notifications' && method === 'GET') {
+      return clientStore.notifications as unknown as T;
+    }
+    if (pathname.includes('/read') && method === 'POST') {
+      const id = pathname.replace('/api/notifications/', '').replace('/read', '');
+      const notif = clientStore.notifications.find(n => n.id === id);
+      if (notif) notif.read = true;
+      clientStore.save();
+      return { success: true } as unknown as T;
+    }
+
+    return undefined;
+  }
+
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const authHeaders: Record<string, string> = {};
     if (this.currentCreatorId) {
       authHeaders['x-creator-id'] = this.currentCreatorId;
     }
 
-    const res = await fetch(endpoint, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeaders,
-        ...(options?.headers || {}),
-      },
-    });
+    try {
+      const res = await fetch(endpoint, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+          ...(options?.headers || {}),
+        },
+      });
 
-    if (!res.ok) {
+      if (res.ok) {
+        return res.json() as Promise<T>;
+      }
+
+      // If status is 404 or server is unreachable, use client fallback storage
+      if (res.status === 404 || res.status >= 500) {
+        const fallback = this.handleClientFallback<T>(endpoint, options);
+        if (fallback !== undefined) {
+          console.info(`[ATELIER API] Gracefully loaded ${endpoint} via client storage (Server returned ${res.status})`);
+          return fallback;
+        }
+      }
+
       let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
       try {
         const errorJson = await res.json();
@@ -47,9 +326,15 @@ class ApiService {
         // fallback
       }
       throw new Error(errorMessage);
+    } catch (err: any) {
+      // In case of network errors (such as offline or static deployment without backend)
+      const fallback = this.handleClientFallback<T>(endpoint, options);
+      if (fallback !== undefined) {
+        console.info(`[ATELIER API] Handled ${endpoint} via offline client fallback storage`);
+        return fallback;
+      }
+      throw err;
     }
-
-    return res.json() as Promise<T>;
   }
 
   // Creators
