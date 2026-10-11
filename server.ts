@@ -19,9 +19,8 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function startServer() {
+export function createApiApp(): express.Express {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // JSON Body parser with comfortable limit for base64 uploads
   app.use(express.json({ limit: '20mb' }));
@@ -766,6 +765,13 @@ async function startServer() {
     }
   });
 
+  return app;
+}
+
+export async function startServer() {
+  const app = createApiApp();
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
   // --- Static & Vite Middleware Integration ---
   const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
   const distDir = path.resolve(__dirname, 'dist');
@@ -792,9 +798,17 @@ async function startServer() {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[ATELIER] Studio server listening on http://0.0.0.0:${PORT}`);
   });
+
+  return app;
 }
 
-startServer().catch(err => {
-  console.error('Failed to start ATELIER server:', err);
-  process.exit(1);
-});
+export const app = createApiApp();
+
+if (!process.env.VERCEL) {
+  startServer().catch(err => {
+    console.error('Failed to start ATELIER server:', err);
+    process.exit(1);
+  });
+}
+
+export default app;

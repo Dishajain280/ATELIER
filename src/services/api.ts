@@ -103,10 +103,23 @@ class ApiService {
   }
 
   private handleClientFallback<T>(endpoint: string, options?: RequestInit): T | undefined {
-    const url = new URL(endpoint, 'http://localhost');
+    let url: URL;
+    try {
+      url = new URL(endpoint, 'http://localhost');
+    } catch {
+      url = new URL('/api', 'http://localhost');
+    }
     const pathname = url.pathname;
     const method = options?.method?.toUpperCase() || 'GET';
-    const body = options?.body ? JSON.parse(options.body as string) : {};
+    
+    let body: any = {};
+    if (options?.body) {
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+      } catch {
+        body = {};
+      }
+    }
 
     // 1. Creators
     if (pathname === '/api/creators' && method === 'GET') {
@@ -116,7 +129,7 @@ class ApiService {
       const handleOrId = decodeURIComponent(pathname.replace('/api/creators/', ''));
       const found = clientStore.creators.find(c => c.handle.toLowerCase() === handleOrId.toLowerCase() || c.id === handleOrId);
       if (found) return found as unknown as T;
-      return clientStore.creators[0] as unknown as T;
+      return (clientStore.creators[0] || SEED_CREATORS[0]) as unknown as T;
     }
     if (pathname === '/api/creators' && method === 'POST') {
       const newCreator: Creator = {
@@ -147,6 +160,7 @@ class ApiService {
         clientStore.save();
         return clientStore.creators[idx] as unknown as T;
       }
+      return clientStore.creators[0] as unknown as T;
     }
 
     // 2. Artworks
@@ -160,6 +174,11 @@ class ApiService {
       if (collectionId) results = results.filter(a => a.collectionId === collectionId);
       if (publicOnly) results = results.filter(a => a.status !== 'draft');
       return results as unknown as T;
+    }
+    if (pathname.startsWith('/api/artworks/') && method === 'GET') {
+      const id = pathname.replace('/api/artworks/', '');
+      const found = clientStore.artworks.find(a => a.id === id);
+      return (found || clientStore.artworks[0]) as unknown as T;
     }
     if (pathname === '/api/artworks' && method === 'POST') {
       const newArt: Artwork = {
@@ -195,6 +214,11 @@ class ApiService {
       if (creatorId) cols = cols.filter(c => c.creatorId === creatorId);
       return cols as unknown as T;
     }
+    if (pathname.startsWith('/api/collections/') && method === 'GET') {
+      const id = pathname.replace('/api/collections/', '');
+      const found = clientStore.collections.find(c => c.id === id);
+      return (found || clientStore.collections[0]) as unknown as T;
+    }
     if (pathname === '/api/collections' && method === 'POST') {
       const newCol: Collection = {
         id: 'col_' + Date.now(),
@@ -216,6 +240,12 @@ class ApiService {
         return clientStore.collections[idx] as unknown as T;
       }
     }
+    if (pathname.startsWith('/api/collections/') && method === 'DELETE') {
+      const id = pathname.replace('/api/collections/', '');
+      clientStore.collections = clientStore.collections.filter(c => c.id !== id);
+      clientStore.save();
+      return { success: true } as unknown as T;
+    }
 
     // 4. Services
     if (pathname === '/api/services' && method === 'GET') {
@@ -223,6 +253,11 @@ class ApiService {
       let srvs = [...clientStore.services];
       if (creatorId) srvs = srvs.filter(s => s.creatorId === creatorId);
       return srvs as unknown as T;
+    }
+    if (pathname.startsWith('/api/services/') && method === 'GET') {
+      const id = pathname.replace('/api/services/', '');
+      const found = clientStore.services.find(s => s.id === id);
+      return (found || clientStore.services[0]) as unknown as T;
     }
     if (pathname === '/api/services' && method === 'POST') {
       const newSrv: CommissionService = {
@@ -234,6 +269,21 @@ class ApiService {
       clientStore.save();
       return newSrv as unknown as T;
     }
+    if (pathname.startsWith('/api/services/') && method === 'PATCH') {
+      const id = pathname.replace('/api/services/', '');
+      const idx = clientStore.services.findIndex(s => s.id === id);
+      if (idx !== -1) {
+        clientStore.services[idx] = { ...clientStore.services[idx], ...body };
+        clientStore.save();
+        return clientStore.services[idx] as unknown as T;
+      }
+    }
+    if (pathname.startsWith('/api/services/') && method === 'DELETE') {
+      const id = pathname.replace('/api/services/', '');
+      clientStore.services = clientStore.services.filter(s => s.id !== id);
+      clientStore.save();
+      return { success: true } as unknown as T;
+    }
 
     // 5. Commissions
     if (pathname === '/api/commissions' && method === 'GET') {
@@ -241,6 +291,11 @@ class ApiService {
       let comms = [...clientStore.commissions];
       if (creatorId) comms = comms.filter(c => c.creatorId === creatorId);
       return comms as unknown as T;
+    }
+    if (pathname.startsWith('/api/commissions/') && method === 'GET') {
+      const id = pathname.replace('/api/commissions/', '');
+      const found = clientStore.commissions.find(c => c.id === id);
+      return (found || clientStore.commissions[0]) as unknown as T;
     }
     if (pathname === '/api/commissions' && method === 'POST') {
       const newComm: CommissionRequest = {
@@ -255,14 +310,15 @@ class ApiService {
       clientStore.save();
       return newComm as unknown as T;
     }
-    if (pathname.includes('/status') && method === 'PATCH') {
+    if (pathname.startsWith('/api/commissions/') && method === 'PATCH') {
       const id = pathname.replace('/api/commissions/', '').replace('/status', '');
       const idx = clientStore.commissions.findIndex(c => c.id === id);
       if (idx !== -1) {
         clientStore.commissions[idx] = {
           ...clientStore.commissions[idx],
-          status: body.status,
-          statusNotes: body.statusNotes,
+          ...(body.status ? { status: body.status } : {}),
+          ...(body.statusNotes !== undefined ? { statusNotes: body.statusNotes } : {}),
+          ...body,
           updatedAt: new Date().toISOString(),
         };
         clientStore.save();
@@ -280,6 +336,95 @@ class ApiService {
       if (notif) notif.read = true;
       clientStore.save();
       return { success: true } as unknown as T;
+    }
+
+    // 7. AI Assistant Endpoints
+    if (pathname === '/api/ai/artwork-assistant') {
+      return {
+        suggestedTitle: 'Resonant Form No. 7',
+        alternativeTitles: ['Quiet Monolith', 'Earthen Vessel in Ochre', 'Archival Solitude'],
+        professionalDescription: 'Hand-shaped ceramic stoneware finished with raw ochre slip and reduction firing, exploring the balance of architectural discipline and spontaneous surface texture.',
+        medium: 'Wood-fired Ceramic & Iron Slip',
+        category: 'Ceramics & Sculpture',
+        tags: ['Ceramics', 'Contemporary Craft', 'Sculpture', 'Architectural'],
+        seoKeywords: ['handmade ceramic stoneware', 'bespoke studio vessel', 'sculptural craft', 'contemporary ceramic art'],
+      } as unknown as T;
+    }
+
+    if (pathname === '/api/ai/profile-assistant') {
+      return {
+        options: [
+          {
+            id: 'opt_curatorial',
+            styleLabel: 'Curatorial & Gallery Focus',
+            professionalBio: 'Investigating the balance between architectural purity and material serendipity, producing singular objects crafted with traditional methods and contemporary intent.',
+            shortTagline: 'Architectural stoneware & contemplative objects',
+            portfolioIntroduction: 'Welcome to the studio archive. Each piece represents an inquiry into tactile permanence and balanced form.',
+            suggestedSpecialties: ['Architectural Stoneware', 'Spatial Installations', 'Limited Edition Vessels'],
+            socialMediaIntroduction: 'Studio documentation and works in progress. Currently accepting commission inquiries for private collections.',
+          },
+          {
+            id: 'opt_intimate',
+            styleLabel: 'Studio Narrative & Craft',
+            professionalBio: 'Working from the intersection of slow craft and architectural geometry, crafting tactile objects designed to inhabit everyday contemplative spaces.',
+            shortTagline: 'Slow craft, architectural vessels, and tactile stoneware',
+            portfolioIntroduction: 'Selected works from ongoing series, available directly from the workbench.',
+            suggestedSpecialties: ['Custom Tableware', 'Site-specific Vessels', 'Fine Craftsmanship'],
+            socialMediaIntroduction: 'Behind the wheel and in the kiln. Handcrafted pieces exploring form and texture.',
+          }
+        ]
+      } as unknown as T;
+    }
+
+    if (pathname === '/api/ai/commission-brief') {
+      return {
+        projectType: 'Bespoke Studio Commission',
+        subject: body.informalRequest || 'Custom Sculptural Series',
+        style: 'Contemporary Minimalist Craft',
+        colorPreferences: 'Earthy Ochres, Terracotta & Raw Glaze',
+        intendedUse: 'Private Architectural Interior',
+        deadline: '6 - 8 weeks standard lead time',
+        structuredBrief: `The project entails creating a custom original work designed according to the collector specifications: ${body.informalRequest || 'Custom studio exploration'}. Production includes preliminary material maquettes, progress documentation, and archival studio stamp.`,
+        usefulClarificationQuestions: [
+          'What are the primary dimensions or surface scale of the intended display location?',
+          'Are there specific architectural finishes or ambient lighting conditions to complement?',
+          'Would you prefer progress photographic milestones prior to final firing?'
+        ]
+      } as unknown as T;
+    }
+
+    if (pathname === '/api/ai/metadata') {
+      return {
+        titleSuggestions: ['Monolith in Raw Ochre', 'Vessel of Stillness', 'Architectural Study IV'],
+        mediumFormatted: 'Stoneware, Wood Ash Glaze',
+        description: 'A study in quiet volume and natural pigment textures.',
+        tags: ['Ceramics', 'Sculptural', 'Contemporary Craft']
+      } as unknown as T;
+    }
+
+    if (pathname === '/api/ai/bio') {
+      return {
+        bio: 'Independent creator crafting intentional objects that balance architectural rigor with natural material character.',
+        statement: 'Art is a slow conversation between material resistance and intentional human touch.',
+        commissionNotice: 'Currently accepting commission inquiries for residential and gallery spaces.'
+      } as unknown as T;
+    }
+
+    if (pathname === '/api/ai/brief') {
+      return {
+        structuredBrief: `Commission request: ${body.roughBrief || 'Custom artwork exploration'}.`,
+        deliverablesSummary: 'Original singular piece accompanied by artist certificate of authenticity.',
+        recommendedScopeNotes: ['Preliminary scale drawing', 'Mid-process status photo update', 'Custom archival packaging']
+      } as unknown as T;
+    }
+
+    if (pathname === '/api/health') {
+      return { status: 'healthy', database: { configured: true, provider: 'Local Client Store' } } as unknown as T;
+    }
+
+    // Default safe fallback for any unhandled GET request
+    if (method === 'GET') {
+      return ([] as unknown as T);
     }
 
     return undefined;
@@ -309,7 +454,7 @@ class ApiService {
       if (res.status === 404 || res.status >= 500) {
         const fallback = this.handleClientFallback<T>(endpoint, options);
         if (fallback !== undefined) {
-          console.info(`[ATELIER API] Gracefully loaded ${endpoint} via client storage (Server returned ${res.status})`);
+          console.info(`[ATELIER API] Gracefully loaded ${endpoint} via local store (Status ${res.status})`);
           return fallback;
         }
       }
@@ -325,6 +470,14 @@ class ApiService {
       } catch {
         // fallback
       }
+
+      // For GET requests, never throw an uncaught error that breaks initial UI rendering
+      if (!options?.method || options.method.toUpperCase() === 'GET') {
+        const fallback = this.handleClientFallback<T>(endpoint, options);
+        if (fallback !== undefined) return fallback;
+        return ([] as unknown as T);
+      }
+
       throw new Error(errorMessage);
     } catch (err: any) {
       // In case of network errors (such as offline or static deployment without backend)
@@ -332,6 +485,9 @@ class ApiService {
       if (fallback !== undefined) {
         console.info(`[ATELIER API] Handled ${endpoint} via offline client fallback storage`);
         return fallback;
+      }
+      if (!options?.method || options.method.toUpperCase() === 'GET') {
+        return ([] as unknown as T);
       }
       throw err;
     }
