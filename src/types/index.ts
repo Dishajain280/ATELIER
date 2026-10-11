@@ -34,6 +34,8 @@ export interface Creator {
     watermarkEnabled?: boolean;
     ambientSoundscape?: 'none' | 'vinyl' | 'rain' | 'waves' | 'studio' | 'lofi';
     heroStyle?: 'immersive' | 'typographic' | 'asymmetrical';
+    showSocialsInHero?: boolean;
+    curatorBadgeText?: string;
     sectionOrder?: string[];
   };
   acceptingCommissions: boolean;

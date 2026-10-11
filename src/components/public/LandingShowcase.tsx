@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowRight, 
   Sparkles, 
@@ -47,6 +47,27 @@ export const LandingShowcase: React.FC<LandingShowcaseProps> = ({
   const [activeAITab, setActiveAITab] = useState<'metadata' | 'bio' | 'brief'>('metadata');
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
 
+  // Hero Carousel State
+  const [heroIndex, setHeroIndex] = useState(0);
+  const carouselArtworks = featuredArtworks && featuredArtworks.length > 0 
+    ? featuredArtworks.slice(0, 5) 
+    : [
+        {
+          id: 'default-1',
+          title: 'Monolith IV: Sediment & Flame',
+          medium: 'Wood-fired Shigaraki stoneware',
+          price: 1850,
+          images: ['/src/assets/images/atelier_ceramic_vessel_1791384010911.jpg']
+        }
+      ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHeroIndex((prev) => (prev + 1) % carouselArtworks.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [carouselArtworks.length]);
+
   // Maya as primary showcase artist
   const maya = creators.find(c => c.handle === 'maya') || creators[0];
   const elena = creators.find(c => c.handle === 'elena') || creators[1];
@@ -86,32 +107,56 @@ export const LandingShowcase: React.FC<LandingShowcaseProps> = ({
       {/* =========================================================================
           SECTION 2: HERO SECTION
       ========================================================================= */}
-      <section className="pt-20 pb-20 md:pt-28 md:pb-28 border-b border-neutral-200/80">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="max-w-4xl space-y-8">
+      {/* =========================================================================
+          SECTION 2: HERO SECTION WITH CURATED ARTWORK CAROUSEL
+      ========================================================================= */}
+      <section className="relative pt-16 pb-20 md:pt-24 md:pb-28 border-b border-neutral-200/80 overflow-hidden bg-neutral-950 text-white">
+        {/* Background Curated Carousel with Fade-in Animation */}
+        <div className="absolute inset-0 z-0 opacity-40">
+          {carouselArtworks.map((art, idx) => (
+            <div
+              key={art.id || idx}
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                idx === heroIndex ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
+              }`}
+              style={{ transitionProperty: 'opacity, transform', transitionDuration: '1.2s' }}
+            >
+              <img
+                src={art.images[0]}
+                alt={art.title}
+                className="w-full h-full object-cover object-center filter blur-[1px]"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          ))}
+          <div className="absolute inset-0 bg-gradient-to-r from-neutral-950 via-neutral-950/90 to-neutral-950/60" />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="lg:col-span-7 space-y-8">
             {/* Editorial Kicker */}
-            <div className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-neutral-500 bg-neutral-100/90 px-3 py-1 rounded-xs border border-neutral-200/60">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span>
+            <div className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-neutral-300 bg-white/10 px-3.5 py-1.5 rounded-xs border border-white/20 backdrop-blur-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
               <span>The Independent Maker Identity</span>
-              <span className="text-neutral-300">/</span>
+              <span className="text-neutral-500">/</span>
               <span>Portfolio · Gallery · Commissions</span>
             </div>
 
             {/* Main Headline */}
-            <h1 className="font-editorial text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-normal text-neutral-950 tracking-tight leading-[0.98]">
+            <h1 className="font-editorial text-5xl sm:text-6xl md:text-7xl font-normal text-white tracking-tight leading-[0.98]">
               Your art deserves more than a feed.
             </h1>
 
             {/* Supporting Pitch */}
-            <p className="text-lg md:text-xl text-neutral-600 font-light leading-relaxed max-w-2xl">
-              ATELIER gives fine artists, craftspeople, and small makers one professional identity: <code className="font-mono text-base font-medium text-neutral-900 bg-neutral-200/60 px-2 py-0.5 rounded-xs">atelier.app/@artistname</code>. A curated portfolio, thematic collections, and a structured commission intake form — with zero algorithm compression.
+            <p className="text-lg md:text-xl text-neutral-300 font-light leading-relaxed max-w-2xl">
+              ATELIER gives fine artists, craftspeople, and small makers one professional identity: <code className="font-mono text-base font-medium text-amber-300 bg-white/10 px-2 py-0.5 rounded-xs">atelier.app/@artistname</code>. A curated portfolio, thematic collections, and a structured commission intake form — with zero algorithm compression.
             </p>
 
-            {/* CTA Group */}
+            {/* Clean Overlay for Primary CTA */}
             <div className="pt-2 flex flex-wrap items-center gap-4">
               <button
                 onClick={onOpenOnboarding}
-                className="px-7 py-3.5 bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-semibold uppercase tracking-wider rounded-xs transition-colors shadow-sm inline-flex items-center gap-2.5 cursor-pointer"
+                className="px-7 py-3.5 bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold uppercase tracking-wider rounded-xs transition-colors shadow-lg inline-flex items-center gap-2.5 cursor-pointer"
               >
                 <span>Create Your Portfolio</span>
                 <ArrowRight className="w-4 h-4" />
@@ -119,21 +164,102 @@ export const LandingShowcase: React.FC<LandingShowcaseProps> = ({
 
               <button
                 onClick={() => scrollToSection('showcase-section')}
-                className="px-6 py-3.5 bg-white border border-neutral-300 hover:bg-neutral-50 text-neutral-800 text-xs font-medium uppercase tracking-wider rounded-xs transition-colors cursor-pointer"
+                className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-medium uppercase tracking-wider rounded-xs transition-colors backdrop-blur-md cursor-pointer"
               >
                 Explore Featured Artists
               </button>
             </div>
 
             {/* Subtext provenance */}
-            <div className="pt-4 flex flex-wrap items-center gap-6 text-xs text-neutral-500 font-light">
+            <div className="pt-4 flex flex-wrap items-center gap-6 text-xs text-neutral-400 font-light">
               <span>Tailored for ceramicists</span>
-              <span aria-hidden="true" className="text-neutral-300">·</span>
+              <span aria-hidden="true" className="text-neutral-600">·</span>
               <span>Oil painters</span>
-              <span aria-hidden="true" className="text-neutral-300">·</span>
+              <span aria-hidden="true" className="text-neutral-600">·</span>
               <span>Textile & fiber sculptors</span>
-              <span aria-hidden="true" className="text-neutral-300">·</span>
+              <span aria-hidden="true" className="text-neutral-600">·</span>
               <span>Woodturners & craft ateliers</span>
+            </div>
+          </div>
+
+          {/* Curated Carousel Artwork Spotlight Card */}
+          <div className="lg:col-span-5">
+            <div className="relative bg-neutral-900/80 backdrop-blur-xl border border-white/15 p-5 rounded-xs shadow-2xl overflow-hidden group">
+              <div className="absolute -right-12 -top-12 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="relative aspect-[4/3] bg-neutral-950 rounded-xs overflow-hidden mb-4 border border-white/10">
+                {carouselArtworks.map((art, idx) => (
+                  <div
+                    key={art.id || idx}
+                    className={`absolute inset-0 transition-opacity duration-1000 ease-in-out flex items-center justify-center ${
+                      idx === heroIndex ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    }`}
+                  >
+                    <img
+                      src={art.images[0]}
+                      alt={art.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                ))}
+                <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-md text-[10px] font-mono px-2.5 py-1 rounded-xs border border-white/20 text-amber-300 uppercase tracking-widest">
+                  Featured Masterpiece · {heroIndex + 1} / {carouselArtworks.length}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {carouselArtworks.map((art, idx) => (
+                  <div
+                    key={art.id || idx}
+                    className={`transition-all duration-700 space-y-1 ${
+                      idx === heroIndex ? 'block opacity-100 translate-y-0' : 'hidden opacity-0 translate-y-2'
+                    }`}
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <h3 className="font-editorial text-xl font-normal text-white">
+                        {art.title}
+                      </h3>
+                      {art.price && (
+                        <span className="font-mono text-sm font-semibold text-amber-400 tabular-nums">
+                          ${art.price.toLocaleString()} USD
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-neutral-400 font-light truncate">
+                      {art.medium}
+                    </p>
+                  </div>
+                ))}
+
+                {/* Carousel Indicators */}
+                <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                  <div className="flex items-center gap-1.5">
+                    {carouselArtworks.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setHeroIndex(idx)}
+                        className={`h-1 rounded-full transition-all duration-300 cursor-pointer ${
+                          idx === heroIndex ? 'w-6 bg-amber-400' : 'w-2 bg-white/30 hover:bg-white/50'
+                        }`}
+                        aria-label={`Slide ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const art = carouselArtworks[heroIndex];
+                      if (art && 'id' in art) {
+                        const fullArt = featuredArtworks.find(a => a.id === art.id);
+                        if (fullArt) onInspectArtwork(fullArt);
+                      }
+                    }}
+                    className="text-xs text-amber-400 hover:text-amber-300 font-medium inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Inspect Fullpiece</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

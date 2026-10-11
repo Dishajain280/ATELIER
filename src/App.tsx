@@ -705,6 +705,8 @@ function AtelierAppContent() {
       {/* Fullscreen Artwork Lightbox */}
       <Lightbox
         artwork={inspectingArtwork}
+        artworks={artworks}
+        onNavigate={setInspectingArtwork}
         onClose={() => setInspectingArtwork(null)}
         onRequestCommission={(art) => {
           setInspectingArtwork(null);

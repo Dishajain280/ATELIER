@@ -33,6 +33,8 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 }) => {
   const pendingCount = commissions.filter(c => c.status === 'RECEIVED' || c.status === 'IN_REVIEW').length;
 
+  const [copiedLink, setCopiedLink] = React.useState(false);
+
   return (
     <div className="bg-[#FAF9F6] min-h-screen text-neutral-900 pb-20">
       {/* Studio Header Bar */}
@@ -60,13 +62,28 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onViewPublicProfile}
-            className="px-4 py-2 border border-neutral-300 hover:bg-neutral-50 text-neutral-800 text-xs font-medium uppercase tracking-wider rounded-xs transition-colors inline-flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-          >
-            <span>Preview Public Link (/@{creator.handle})</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/@${creator.handle}`;
+                navigator.clipboard?.writeText(url);
+                setCopiedLink(true);
+                setTimeout(() => setCopiedLink(false), 2000);
+              }}
+              className="px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium uppercase tracking-wider rounded-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+              title="Copy Public Portfolio URL"
+            >
+              <span>{copiedLink ? '✓ Copied!' : 'Copy Link'}</span>
+            </button>
+
+            <button
+              onClick={onViewPublicProfile}
+              className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-medium uppercase tracking-wider rounded-xs transition-colors inline-flex items-center gap-2 self-start sm:self-auto cursor-pointer shadow-xs"
+            >
+              <span>Preview Public Portfolio</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Studio Sub-Navigation Tabs */}

@@ -13,7 +13,9 @@ import {
   ExternalLink,
   Check,
   TrendingUp,
-  FileText
+  FileText,
+  AlertCircle,
+  Lightbulb
 } from 'lucide-react';
 import { Creator, Artwork, Collection, CommissionService, CommissionRequest } from '../../types/index.js';
 
@@ -40,6 +42,36 @@ export const StudioOverview: React.FC<StudioOverviewProps> = ({
 }) => {
   const pendingCommissions = commissions.filter(c => c.status === 'RECEIVED' || c.status === 'IN_REVIEW');
   const activeServices = services.filter(s => s.active);
+
+  // Diagnostic analysis
+  const issues: { title: string; desc: string; tab: string }[] = [];
+  const opportunities: { title: string; desc: string; tab: string }[] = [];
+
+  if (!creator.bio || creator.bio.length < 50) {
+    issues.push({ title: 'Brief Biography', desc: 'Your artist statement is currently sparse. Collectors connect deeply with narrative context.', tab: 'portfolio' });
+  }
+  if (artworks.length < 3) {
+    issues.push({ title: 'Low Artwork Inventory', desc: 'You have fewer than 3 cataloged works. Galleries and patrons prefer rich portfolios.', tab: 'artworks' });
+  }
+  const unpriced = artworks.filter(a => !a.price && a.status === 'available');
+  if (unpriced.length > 0) {
+    issues.push({ title: `${unpriced.length} Unpriced Available Work(s)`, desc: 'Displaying clear pricing increases collector acquisition intent and reduces friction.', tab: 'artworks' });
+  }
+  if (!creator.themeSettings?.ambientSoundscape || creator.themeSettings?.ambientSoundscape === 'none') {
+    opportunities.push({ title: 'Add an Ambient Soundscape', desc: 'Enhance your portfolio atmosphere with our curated Lo-Fi soundscape in Settings.', tab: 'portfolio' });
+  }
+  if (!creator.themeSettings?.watermarkEnabled) {
+    opportunities.push({ title: 'Enable Fine Art Watermarking', desc: 'Protect your high-resolution studio photography from automated scraping.', tab: 'portfolio' });
+  }
+  if (services.length === 0) {
+    opportunities.push({ title: 'Define Commission Tiers', desc: 'Set up clear commission services so collectors can submit tailored project briefs.', tab: 'services' });
+  }
+  if (collections.length === 0) {
+    opportunities.push({ title: 'Curate Series Collections', desc: 'Group your works into thematic series (e.g., "Wood-fired Stoneware") for storytelling.', tab: 'collections' });
+  }
+  if (opportunities.length === 0) {
+    opportunities.push({ title: 'Advanced AI Storytelling', desc: 'Use our AI Studio to generate museum-grade monographs and exhibition statements.', tab: 'ai-studio' });
+  }
 
   // Calculate profile completion percentage
   let completedItems = 0;
@@ -276,6 +308,85 @@ export const StudioOverview: React.FC<StudioOverviewProps> = ({
           <div className="mt-6 pt-4 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-500">
             <span>Direct Stripe / Escrow payouts enabled</span>
             <span className="font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-xs">Secure 0% commission fee tier</span>
+          </div>
+        </div>
+      </div>
+
+      {/* AI Curator Advisory & Studio Diagnostics */}
+      <div className="bg-white border border-neutral-200 p-8 rounded-xs shadow-xs space-y-6">
+        <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xs bg-amber-50 text-amber-700 flex items-center justify-center">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-editorial text-xl font-normal text-neutral-900">
+                AI Curator Advisory & Studio Diagnostics
+              </h3>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Real-time automated evaluation of your portfolio presentation, discoverability, and collector conversion.
+              </p>
+            </div>
+          </div>
+          <span className="font-mono text-xs bg-amber-50 text-amber-800 px-3 py-1 rounded-xs border border-amber-200 font-medium">
+            {issues.length === 0 ? 'Optimal Portfolio Status' : `${issues.length} Attention Item(s)`}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* What's Wrong / Attention Needed */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-neutral-800 uppercase tracking-wider">
+              <AlertCircle className="w-4 h-4 text-amber-600" />
+              <span>What Needs Attention ({issues.length})</span>
+            </div>
+            {issues.length === 0 ? (
+              <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-xs text-xs text-emerald-900 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>All core profile checks passed! Your studio portfolio is fully optimized.</span>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {issues.map((issue, idx) => (
+                  <div key={idx} className="p-3.5 bg-neutral-50 border border-neutral-200/80 rounded-xs flex items-start justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-semibold text-neutral-900">{issue.title}</p>
+                      <p className="text-[11px] text-neutral-600 font-light leading-relaxed">{issue.desc}</p>
+                    </div>
+                    <button
+                      onClick={() => onNavigateTab(issue.tab as any)}
+                      className="px-2.5 py-1 bg-white border border-neutral-300 hover:border-neutral-900 text-neutral-800 text-[10px] font-medium uppercase tracking-wider rounded-xs transition-colors shrink-0 cursor-pointer"
+                    >
+                      Fix →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* What More Can We Do / Growth Opportunities */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-neutral-800 uppercase tracking-wider">
+              <Lightbulb className="w-4 h-4 text-amber-600" />
+              <span>Growth Opportunities ({opportunities.length})</span>
+            </div>
+            <div className="space-y-2.5">
+              {opportunities.map((opp, idx) => (
+                <div key={idx} className="p-3.5 bg-amber-50/40 border border-amber-200/80 rounded-xs flex items-start justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-semibold text-neutral-900">{opp.title}</p>
+                    <p className="text-[11px] text-neutral-600 font-light leading-relaxed">{opp.desc}</p>
+                  </div>
+                  <button
+                    onClick={() => onNavigateTab(opp.tab as any)}
+                    className="px-2.5 py-1 bg-amber-700 hover:bg-amber-800 text-white text-[10px] font-semibold uppercase tracking-wider rounded-xs transition-colors shrink-0 cursor-pointer"
+                  >
+                    Configure →
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

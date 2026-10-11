@@ -160,6 +160,8 @@ async function startServer() {
       watermarkEnabled: z.boolean().optional(),
       ambientSoundscape: z.enum(['none', 'vinyl', 'rain', 'waves', 'studio', 'lofi']).optional(),
       heroStyle: z.enum(['immersive', 'typographic', 'asymmetrical']).optional(),
+      showSocialsInHero: z.boolean().optional(),
+      curatorBadgeText: z.string().max(100).optional(),
       sectionOrder: z.array(z.string()).optional(),
     }).optional(),
     acceptingCommissions: z.boolean().optional(),

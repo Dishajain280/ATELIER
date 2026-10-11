@@ -4,8 +4,10 @@ import { Artwork } from '../../types/index.js';
 
 interface LightboxProps {
   artwork: Artwork | null;
+  artworks: Artwork[];
   onClose: () => void;
   onRequestCommission?: (artwork: Artwork) => void;
+  onNavigate?: (artwork: Artwork) => void;
 }
 
 type WallBackground = 'gallery' | 'scandinavian' | 'brutalist';
@@ -13,8 +15,10 @@ type ArtworkScale = 'sm' | 'md' | 'lg';
 
 export const Lightbox: React.FC<LightboxProps> = ({
   artwork,
+  artworks,
   onClose,
   onRequestCommission,
+  onNavigate,
 }) => {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
@@ -123,6 +127,24 @@ export const Lightbox: React.FC<LightboxProps> = ({
                 className="max-h-[72vh] max-w-full object-contain transition-transform"
                 referrerPolicy="no-referrer"
               />
+              
+              {/* Navigation Buttons */}
+              {onNavigate && (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); const idx = artworks.findIndex(a => a.id === artwork.id); if (idx > 0) onNavigate(artworks[idx - 1]); }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-full transition-colors cursor-pointer"
+                  >
+                    <ArrowRight className="w-6 h-6 rotate-180" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); const idx = artworks.findIndex(a => a.id === artwork.id); if (idx < artworks.length - 1) onNavigate(artworks[idx + 1]); }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-full transition-colors cursor-pointer"
+                  >
+                    <ArrowRight className="w-6 h-6" />
+                  </button>
+                </>
+              )}
             </div>
 
             {/* AR Virtual Wall Preview Button overlay */}

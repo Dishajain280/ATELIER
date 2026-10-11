@@ -34,6 +34,9 @@ export const ArtistHero: React.FC<ArtistHeroProps> = ({
   const [isCopied, setIsCopied] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
 
+  const accentColor = creator.themeSettings?.accentColor || '#B45309';
+  const curatorBadgeText = creator.themeSettings?.curatorBadgeText;
+
   const handleShare = async () => {
     const url = window.location.href.split('#')[0] + `#/@${creator.handle}`;
     try {
@@ -61,6 +64,14 @@ export const ArtistHero: React.FC<ArtistHeroProps> = ({
               <span className="text-neutral-500 inline-flex items-center gap-1 font-medium">
                 <MapPin className="w-3 h-3 text-neutral-400" />
                 {creator.location}
+              </span>
+            )}
+            {curatorBadgeText && (
+              <span 
+                className="font-mono text-[11px] uppercase tracking-wider px-2.5 py-0.5 rounded-xs border font-medium"
+                style={{ borderColor: accentColor, color: accentColor }}
+              >
+                {curatorBadgeText}
               </span>
             )}
             {creator.acceptingCommissions && (
@@ -95,7 +106,8 @@ export const ArtistHero: React.FC<ArtistHeroProps> = ({
             <div className="md:col-span-4 flex flex-wrap items-center gap-3 justify-start md:justify-end">
               <button
                 onClick={onRequestCommission}
-                className="px-6 py-3.5 bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-semibold uppercase tracking-wider rounded-xs transition-all cursor-pointer"
+                style={{ backgroundColor: accentColor }}
+                className="px-6 py-3.5 hover:opacity-90 text-white text-xs font-semibold uppercase tracking-wider rounded-xs transition-all shadow-sm cursor-pointer"
               >
                 Commission Me
               </button>
@@ -140,6 +152,14 @@ export const ArtistHero: React.FC<ArtistHeroProps> = ({
                     {creator.location}
                   </span>
                 )}
+                {curatorBadgeText && (
+                  <span 
+                    className="font-mono text-[11px] uppercase tracking-wider px-2.5 py-0.5 rounded-xs border font-medium"
+                    style={{ borderColor: accentColor, color: accentColor }}
+                  >
+                    {curatorBadgeText}
+                  </span>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -162,7 +182,8 @@ export const ArtistHero: React.FC<ArtistHeroProps> = ({
               <div className="pt-2 flex flex-wrap items-center gap-3">
                 <button
                   onClick={onRequestCommission}
-                  className="px-6 py-3 bg-neutral-950 text-white text-xs font-semibold uppercase tracking-wider rounded-xs hover:bg-neutral-800 transition-colors cursor-pointer"
+                  style={{ backgroundColor: accentColor }}
+                  className="px-6 py-3 hover:opacity-90 text-white text-xs font-semibold uppercase tracking-wider rounded-xs transition-colors shadow-xs cursor-pointer"
                 >
                   Commission Artist
                 </button>
@@ -208,6 +229,17 @@ export const ArtistHero: React.FC<ArtistHeroProps> = ({
                 </>
               )}
 
+              {curatorBadgeText && (
+                <>
+                  <span className="text-neutral-300" aria-hidden="true">·</span>
+                  <span 
+                    className="font-mono text-[11px] uppercase tracking-wider px-2.5 py-0.5 rounded-xs border font-medium"
+                    style={{ borderColor: accentColor, color: accentColor }}
+                  >
+                    {curatorBadgeText}
+                  </span>
+                </>
+              )}
               <span className="text-neutral-300" aria-hidden="true">·</span>
               {creator.acceptingCommissions ? (
                 <span className="inline-flex items-center gap-1.5 text-amber-900 font-medium bg-amber-50 border border-amber-200/70 px-2.5 py-0.5 rounded-xs">
@@ -264,7 +296,8 @@ export const ArtistHero: React.FC<ArtistHeroProps> = ({
             <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
                 onClick={onRequestCommission}
-                className="px-6 py-3 bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-semibold uppercase tracking-wider rounded-xs transition-all shadow-xs cursor-pointer active:scale-[0.99]"
+                style={{ backgroundColor: accentColor }}
+                className="px-6 py-3 hover:opacity-90 text-white text-xs font-semibold uppercase tracking-wider rounded-xs transition-all shadow-xs cursor-pointer active:scale-[0.99]"
               >
                 Commission Me
               </button>
